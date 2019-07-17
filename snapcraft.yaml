@@ -551,6 +551,7 @@ parts:
       - libcaca0
       - libfdt1
       - libflac8
+      - libglu1-mesa
       - libiscsi7
       - libjpeg-turbo8
       - libnspr4
@@ -562,6 +563,7 @@ parts:
       - librados2
       - librbd1
       - libsdl1.2debian
+      - libslang2
       - libsndfile1
       - libusb-1.0-0
       - libusbredirparser1
@@ -573,6 +575,7 @@ parts:
       - libxdmcp6
       - libxen-dev
       - libxext6
+      - libpng16-16
     build-packages:
       - acpica-tools
       - libaio-dev
