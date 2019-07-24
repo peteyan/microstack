@@ -1,7 +1,7 @@
 - job:
     name: microstack-tox-snap-with-sudo
     parent: openstack-tox-snap-with-sudo
-    timeout: 3600
+    timeout: 7200
     nodeset: ubuntu-bionic
 
 - project:

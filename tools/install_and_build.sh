@@ -4,8 +4,6 @@ set -ex
 
 export PATH=/snap/bin:$PATH
 
-which nc || sudo apt install -y netcat
-
 sudo apt update
 sudo apt install -y snapd
 
