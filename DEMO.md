@@ -69,10 +69,26 @@ echo vm.swappiness=1 | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 ```
 
+### Initialize MicroStack
+
+At this point, you have all the OpenStack bits on disk, and the
+services are running. But they still have to be configured to talk to
+each other. Plus, you need a root password and other niceties. Run the
+init script to set all of that up:
+
+```
+microstack.init --auto
+```
+
+(Note that you may leave --auto out at present. The init script will
+be interactive in the very near future, however, and if you are
+scripting, you'll want to leave that auto in!)
+
 ### Optional Microstack Config
 
 By default, microstack will use Cloudflare's 1.1.1.1 as a DNS. If
-you're in a network restricted environment, or simply want to use a different DNS, you'll need to edit the config manually:
+you're in a network restricted environment, or simply want to use a
+different DNS, you'll need to edit the config manually:
 
 ```
 sudo vim /var/snap/microstack/common/etc/neutron/dhcp_agent.ini

@@ -21,8 +21,8 @@ apps:
 #      - network
 
   # OpenStack Service Configuration
-  configure:
-    command: configure-openstack
+  init:
+    command: init.sh
 #    plugs:
 #      - network
 
