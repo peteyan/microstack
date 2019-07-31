@@ -2,16 +2,23 @@
 
 [![Snap Status](https://build.snapcraft.io/badge/CanonicalLtd/microstack.svg)](https://build.snapcraft.io/user/CanonicalLtd/microstack)
 
-OpenStack in a snap that you can run locally on a single machine!
+OpenStack in a snap that you can run locally on a single machine! Excellent for ...
+
+* Development and Testing of Openstack Workloads
+* CI
+* Edge Clouds (experimental)
 
 `microstack` currently provides Nova, Keystone, Glance, Horizon and Neutron OpenStack services.
+
+If you want to roll up your sleeves and do interesting things with the services and settings, look in the .d directories in the filesystem tree under `/var/snap/microstack/common/etc`. You can add services with your package manager, or take a look at `CONTRIBUTING.md` and make a code based argument for adding a service to the default list. :-)
+
 
 ## Installation
 
 `microstack` is frequently updated to provide the latest stable updates of the most recent OpenStack release.  The quickest was to get started is to install directly from the snap store.  You can install `microstack` using:
 
 ```
-sudo snap install microstack --classic --candidate
+sudo snap install microstack --classic --beta
 ```
 
 ## Quickstart
