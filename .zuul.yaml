@@ -3,6 +3,8 @@
     parent: openstack-tox-snap-with-sudo
     timeout: 7200
     nodeset: ubuntu-bionic
+    vars:
+      tox_envlist: init_lint init_unit snap
 
 - project:
     check:

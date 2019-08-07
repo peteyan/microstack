@@ -22,7 +22,7 @@ apps:
 
   # OpenStack Service Configuration
   init:
-    command: init.sh
+    command: microstack_init
 #    plugs:
 #      - network
 
@@ -792,3 +792,12 @@ parts:
   overlay:
     plugin: dump
     source: snap-overlay
+
+  # Optionally interactive init script
+  init:
+    plugin: python
+    python-version: python3
+    python-packages:
+      - pymysql
+      - wget
+    source: tools/init

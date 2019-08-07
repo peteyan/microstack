@@ -79,7 +79,7 @@ if [ "${UPGRADE_FROM}" != "none" ]; then
     $PREFIX sudo snap install --classic --${UPGRADE_FROM} microstack
 fi
 
-# Install the snap under test
+# Install the snap under test -- try again if the machine is not yet ready.
 $PREFIX sudo snap install --classic --dangerous microstack*.snap
 $PREFIX sudo /snap/bin/microstack.init
 
