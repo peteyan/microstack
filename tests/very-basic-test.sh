@@ -20,7 +20,7 @@ MACHINE=$(petname)
 multipass launch --cpus 2 --mem 16G $DISTRO --name $MACHINE
 
 # Install the snap
-multipass copy-files microstack_rocky_amd64.snap $MACHINE:
+multipass copy-files microstack_stein_amd64.snap $MACHINE:
 multipass exec $MACHINE -- \
           sudo snap install --classic --dangerous microstack*.snap
 

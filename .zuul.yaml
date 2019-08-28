@@ -4,7 +4,7 @@
     timeout: 7200
     nodeset: ubuntu-bionic
     vars:
-      tox_envlist: init_lint init_unit snap
+      tox_envlist: snap
 
 - project:
     check:

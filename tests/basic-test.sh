@@ -35,8 +35,8 @@ do
     esac
 done
 
-if [ ! -f microstack_rocky_amd64.snap ]; then
-   echo "microstack_rocky_amd64.snap not found."
+if [ ! -f microstack_stein_amd64.snap ]; then
+   echo "microstack_stein_amd64.snap not found."
    echo "Please run snapcraft before executing the tests."
    exit 1
 fi
@@ -71,7 +71,7 @@ if [ "$PREFIX" == "multipass" ]; then
     PREFIX="multipass exec $MACHINE --"
 
     multipass launch --cpus 2 --mem 16G $DISTRO --name $MACHINE
-    multipass copy-files microstack_rocky_amd64.snap $MACHINE:
+    multipass copy-files microstack_stein_amd64.snap $MACHINE:
 fi
 
 # Possibly install a release of the snap before running a test.

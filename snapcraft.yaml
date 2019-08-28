@@ -1,5 +1,5 @@
 name: microstack
-version: rocky
+version: stein
 base: core18
 summary: OpenStack on your laptop.
 description: |
@@ -308,24 +308,40 @@ apps:
 #      - network
 
 parts:
+  # Add Ubuntu Cloud Archive sources.
+  # Allows us to fetch things such as updated libvirt.
+  uca-sources:
+    plugin: nil
+    build-packages:
+      - ubuntu-cloud-keyring
+      - software-properties-common
+      - dpkg-dev  # We'll need to manipulate sources later.
+    override-build: |
+      add-apt-repository -s cloud-archive:stein
+      apt-key update
+      apt update
+      snapcraftctl build
+
   # OpenStack Python Projects, keyed off Keystone
   openstack-projects:
     plugin: python
-    python-version: python2
+    python-version: python3
+    after:
+      - uca-sources
     constraints:
-      - https://raw.githubusercontent.com/openstack/requirements/stable/rocky/upper-constraints.txt
-    source: http://tarballs.openstack.org/keystone/keystone-stable-rocky.tar.gz
+      - https://raw.githubusercontent.com/openstack/requirements/stable/stein/upper-constraints.txt
+    source: http://tarballs.openstack.org/keystone/keystone-stable-stein.tar.gz
     python-packages:
       - libvirt-python
       - oslo.cache[dogpile]
       - pymysql
       - uwsgi
       - git+https://opendev.org/x/snap.openstack#egg=snap.openstack
-      - http://tarballs.openstack.org/nova/nova-stable-rocky.tar.gz
-      - http://tarballs.openstack.org/neutron/neutron-stable-rocky.tar.gz
-      - http://tarballs.openstack.org/glance/glance-stable-rocky.tar.gz
-      - http://tarballs.openstack.org/cinder/cinder-stable-rocky.tar.gz
-      - http://tarballs.openstack.org/horizon/horizon-stable-rocky.tar.gz
+      - http://tarballs.openstack.org/nova/nova-stable-stein.tar.gz
+      - http://tarballs.openstack.org/neutron/neutron-stable-stein.tar.gz
+      - http://tarballs.openstack.org/glance/glance-stable-stein.tar.gz
+      - http://tarballs.openstack.org/cinder/cinder-stable-stein.tar.gz
+      - http://tarballs.openstack.org/horizon/horizon-stable-stein.tar.gz
       - python-cinderclient
       - python-openstackclient
       - python-swiftclient
@@ -341,21 +357,21 @@ parts:
       - conntrack
       - coreutils
       - haproxy
-      - libpython2.7
+      - python3-dev
     override-prime: |
       snapcraftctl prime
       # Uncomment the below line for better python-libvirt debugging output.
       # patch --batch --forward --strip 1 --input ../project/patches/nova/nova_log_error.patch
       # Now that everything is built, let's disable user site-packages
       # as stated in PEP-0370
-      sed -i usr/lib/python2.7/site.py -e 's/^ENABLE_USER_SITE = None$/ENABLE_USER_SITE = False/'
+      sed -i usr/lib/python3.6/site.py -e 's/^ENABLE_USER_SITE = None$/ENABLE_USER_SITE = False/'
       # This is the last step, let's now compile all our pyc files.
       # Ignore errors due to syntax issues in foobar python 2.
-      ./usr/bin/python2.7 -m compileall . || true
+      ./usr/bin/python3.6 -m compileall . || true
   keystone-config:
     after: [openstack-projects]
     plugin: dump
-    source: http://tarballs.openstack.org/keystone/keystone-stable-rocky.tar.gz
+    source: http://tarballs.openstack.org/keystone/keystone-stable-stein.tar.gz
     organize:
       etc/*.conf: etc/keystone/
       etc/*.ini: etc/keystone/
@@ -379,7 +395,7 @@ parts:
   nova-config:
     after: [openstack-projects]
     plugin: dump
-    source: http://tarballs.openstack.org/nova/nova-stable-rocky.tar.gz
+    source: http://tarballs.openstack.org/nova/nova-stable-stein.tar.gz
     filesets:
       etc:
         - etc/nova/*
@@ -389,7 +405,7 @@ parts:
   neutron-config:
     after: [openstack-projects]
     plugin: dump
-    source: http://tarballs.openstack.org/neutron/neutron-stable-rocky.tar.gz
+    source: http://tarballs.openstack.org/neutron/neutron-stable-stein.tar.gz
     organize:
       etc/*.conf: etc/neutron/
       etc/*.ini: etc/neutron/
@@ -404,7 +420,7 @@ parts:
   glance-config:
     after: [openstack-projects]
     plugin: dump
-    source: http://tarballs.openstack.org/glance/glance-stable-rocky.tar.gz
+    source: http://tarballs.openstack.org/glance/glance-stable-stein.tar.gz
     organize:
       etc/*.conf: etc/glance/
       etc/*.ini: etc/glance/
@@ -418,7 +434,7 @@ parts:
   cinder-config:
     after: [openstack-projects]
     plugin: dump
-    source: http://tarballs.openstack.org/cinder/cinder-stable-rocky.tar.gz
+    source: http://tarballs.openstack.org/cinder/cinder-stable-stein.tar.gz
     organize:
       etc/*.conf: etc/cinder/
       etc/*.ini: etc/cinder/
@@ -433,7 +449,7 @@ parts:
   horizon-config:
     after: [openstack-projects]
     plugin: dump
-    source: http://tarballs.openstack.org/horizon/horizon-stable-rocky.tar.gz
+    source: http://tarballs.openstack.org/horizon/horizon-stable-stein.tar.gz
     organize:
       etc/*.conf: etc/horizon/
     filesets:
@@ -530,10 +546,11 @@ parts:
   # libvirt/qemu
   qemu:
     source: .
-    source-subdir: qemu-2.11+dfsg
+    source-subdir: qemu-3.1+dfsg
     plugin: autotools
     after:
       - openstack-projects
+      - uca-sources
     stage-packages:
       - seabios
       - ipxe-qemu
@@ -612,19 +629,17 @@ parts:
       - --prefix=/snap/$SNAPCRAFT_PROJECT_NAME/current
       - --localstatedir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common
       - --sysconfdir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common
-      - --extra-cflags=-DCONFIG_QEMU_DATAPATH='"/snap/$SNAPCRAFT_PROJECT_NAME/current/share/qemu:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/share/seabios:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/lib/ipxe/qemu"'
+      - --firmwarepath=/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/share/seabios:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/share/qemu:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/lib/ipxe/qemu
       - --disable-user
       - --disable-linux-user
       - --enable-system
       - --target-list=x86_64-softmmu
     override-build: |
-      # Clean up old install
-      rm -R qemu-2.* || true
-      # Download sources and patch
-      wget http://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu_2.11+dfsg.orig.tar.xz
-      wget http://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu_2.11+dfsg-1ubuntu7.14.debian.tar.xz
-      wget http://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu_2.11+dfsg-1ubuntu7.14.dsc
-      dpkg-source -x qemu_*.dsc
+      # I think that snapcraft is creating this dir, which breaks the below.xo
+      rm -Rf qemu-3.1+dfsg
+      apt source qemu
+      # Fix issue with running apt source as root
+      dpkg-source --before-build qemu-3.1+dfsg
       snapcraftctl build
     organize:
       # Hack to shift installed qemu back to root of snap
@@ -640,8 +655,11 @@ parts:
 
   libvirt:
     source: .
-    source-subdir: libvirt-4.0.0
-    after: [openstack-projects, qemu]
+    source-subdir: libvirt-5.0.0
+    after:
+      - openstack-projects
+      - qemu
+      - uca-sources
     plugin: autotools
     build-packages:
     - libxml2-dev
@@ -704,13 +722,11 @@ parts:
     - IPTABLES_PATH=/snap/$SNAPCRAFT_PROJECT_NAME/current/sbin/iptables
     - IP6TABLES_PATH=/snap/$SNAPCRAFT_PROJECT_NAME/current/sbin/ip6tables
     override-build: |
-      # Clean up old install
-      rm -R libvirt-4.0.* || true
-      # Download sources and patch
-      wget http://archive.ubuntu.com/ubuntu/pool/main/libv/libvirt/libvirt_4.0.0.orig.tar.xz
-      wget http://archive.ubuntu.com/ubuntu/pool/main/libv/libvirt/libvirt_4.0.0-1ubuntu8.12.debian.tar.xz
-      wget http://archive.ubuntu.com/ubuntu/pool/main/libv/libvirt/libvirt_4.0.0-1ubuntu8.12.dsc
-      dpkg-source -x libvirt*.dsc
+      # I think that snapcraft is creating this dir, which breaks the below.
+      rm -Rf libvirt-5.0.0
+      apt source libvirt
+      # Fix issue with running apt source as root
+      dpkg-source --before-build libvirt-5.0.0
       snapcraftctl build
     organize:
       # Hack to shift installed libvirt back to root of snap
