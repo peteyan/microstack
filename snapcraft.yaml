@@ -485,8 +485,7 @@ parts:
       - -*
 
   openvswitch:
-    # TODO: figure out a better way to fetch the version
-    source: http://openvswitch.org/releases/openvswitch-2.10.2.tar.gz
+    source: http://openvswitch.org/releases/openvswitch-2.11.1.tar.gz
     plugin: autotools
     build-packages:
       - libssl-dev
@@ -505,18 +504,6 @@ parts:
       - "--sysconfdir=/var/snap/$SNAPCRAFT_PROJECT_NAME/etc"
     after:
       - patches
-    override-build: |
-      # Apply patches
-      for patch in ${SNAPCRAFT_STAGE}/patches/openvswitch/*.patch; do
-        echo "Applying $(basename "$patch") ..."
-        patch \
-          --batch \
-          --forward \
-          --strip 1 \
-          --input "$patch"
-        echo
-      done
-      snapcraftctl build
 
   ovs-wrapper:
     source: ./snap-wrappers/ovs
