@@ -21,7 +21,16 @@ limitations under the License.
 """
 import logging
 import os
-import sys
+
+
+# Setup logging
+log = logging.getLogger("microstack_init")
+log.setLevel(logging.INFO)
+stream = logging.StreamHandler()
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+stream.setFormatter(formatter)
+log.addHandler(stream)
 
 
 class Env():
@@ -40,13 +49,3 @@ class Env():
     def get_env(self):
         """Get a mapping friendly dict."""
         return self.__dict__
-
-
-logging.basicConfig(
-    # filename='{SNAP_COMMON}/log/microstack_init.log'.format(**Env),
-    stream=sys.stdout,
-    level=logging.DEBUG
-)
-
-
-log = logging  # noqa

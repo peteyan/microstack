@@ -16,7 +16,7 @@
 ##############################################################################
 
 # Configuration and checks
-set -ex
+set -e
 
 export PATH=/snap/bin:$PATH
 

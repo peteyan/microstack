@@ -30,10 +30,26 @@ from typing import Dict, List
 import pymysql
 import wget
 
-from init.config import Env
+from init.config import Env, log
 
 
 _env = Env().get_env()
+
+
+def _popen(*args: List[str], env: Dict = _env):
+    """Run a shell command, piping STDOUT and STDERR to our logger.
+
+    :param args: strings to be composed into the bash call.
+    :param env: defaults to our Env singleton; can be overriden.
+
+    """
+    proc = subprocess.Popen(args, env=env, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, bufsize=1,
+                            universal_newlines=True)
+    for line in iter(proc.stdout.readline, ''):
+        log.debug(line)
+    proc.wait()
+    return proc
 
 
 def check(*args: List[str], env: Dict = _env) -> int:
@@ -43,7 +59,13 @@ def check(*args: List[str], env: Dict = _env) -> int:
     :param env: defaults to our Env singleton; can be overriden.
 
     """
-    return subprocess.check_call(args, env=env)
+    proc = _popen(*args, env=env)
+    if proc.returncode:
+        raise subprocess.CalledProcessError(
+            "Command '{}' returned non-zero exit status {}".format(
+                " ".join(args),
+                proc.returncode))
+    return proc.returncode
 
 
 def check_output(*args: List[str], env: Dict = _env) -> str:
@@ -67,7 +89,8 @@ def call(*args: List[str], env: Dict = _env) -> bool:
     :param args: strings to be composed into the bash call.
     :param env: defaults to our Env singleton; can be overriden.
     """
-    return not subprocess.call(args, env=env)
+    proc = _popen(*args, env=env)
+    return not proc.returncode
 
 
 def shell(cmd: str, env: Dict = _env) -> int:
@@ -82,8 +105,19 @@ def shell(cmd: str, env: Dict = _env) -> int:
     :param env: defaults to our Env singleton; can be overriden.
 
     """
-    return subprocess.check_call(cmd, shell=True, env=env,
-                                 executable='/snap/core18/current/bin/bash')
+    proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, bufsize=1,
+                            universal_newlines=True, shell=True,
+                            executable='/snap/core18/current/bin/bash')
+    for line in iter(proc.stdout.readline, ''):
+        log.debug(line)
+    proc.wait()
+    if proc.returncode:
+        raise subprocess.CalledProcessError(
+            "Command '{}' returned non-zero exit status {}".format(
+                cmd,
+                proc.returncode))
+    return proc.returncode
 
 
 def sql(cmd: str) -> None:
