@@ -161,12 +161,14 @@ done;
 
 # Cleanup
 unset IP
-echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
-echo "++   Completed tests. Cleaning up               ++"
-echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
 if [[ $PREFIX == *"multipass"* ]]; then
+    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
+    echo "++   Completed tests. Cleaning up               ++"
+    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
     sudo multipass delete $MACHINE
     sudo multipass purge
 else
-    $PREFIX sudo snap remove microstack
+    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
+    echo "++   Completed tests. Leaving snap installed.   ++"
+    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
 fi
