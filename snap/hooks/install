@@ -18,6 +18,8 @@ for project in neutron nova keystone glance; do
     mkdir -p ${SNAP_COMMON}/etc/${project}/${project}.conf.d
     cp -r ${SNAP}/etc/${project}/${project}.conf.d/* ${SNAP_COMMON}/etc/${project}/${project}.conf.d || true # Skip conf files that have been moved into templates
 done
+# Make a place for our horizon config overrides to live
+mkdir -p ${SNAP_COMMON}/etc/horizon/local_settings.d
 
 snap-openstack setup  # Sets up templates for the first time.
 

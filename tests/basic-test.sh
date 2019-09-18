@@ -24,6 +24,7 @@ UPGRADE_FROM="none"
 FORCE_QEMU=false
 PREFIX=""
 DISTRO="bionic"
+HORIZON_IP="10.20.20.1"
 
 while getopts u:d:mq option
 do
@@ -72,6 +73,9 @@ if [ "$PREFIX" == "multipass" ]; then
 
     multipass launch --cpus 2 --mem 16G $DISTRO --name $MACHINE
     multipass copy-files microstack_stein_amd64.snap $MACHINE:
+
+    HORIZON_IP=`multipass info $MACHINE | grep IPv4 | cut -d":" -f2 \
+        | tr -d '[:space:]'`
 fi
 
 # Possibly install a release of the snap before running a test.
@@ -159,16 +163,34 @@ until $PREFIX ssh -oStrictHostKeyChecking=no -i \
     sleep 5
 done;
 
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "++   Running Horizon GUI tests                  ++"
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
+
+export HORIZON_IP
+if [[ $PREFIX == *"multipass"* ]]; then
+    echo "Opening $HORIZON_IP:80 up to the outside world."
+    cat<<EOF > /tmp/_10_hosts.py
+# Allow all hosts to connect to this machine
+ALLOWED_HOSTS = ['*',]
+EOF
+    multipass copy-files /tmp/_10_hosts.py $MACHINE:/tmp/_10_hosts.py
+    $PREFIX sudo cp /tmp/_10_hosts.py \
+         /var/snap/microstack/common/etc/horizon/local_settings.d/
+    $PREFIX sudo snap restart microstack
+fi
+tests/test_horizonlogin.py
+echo "Horizon tests complete!."
+unset HORIZON_IP
+
 # Cleanup
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "++   Completed tests. Cleaning up               ++"
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
 unset IP
 if [[ $PREFIX == *"multipass"* ]]; then
-    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
-    echo "++   Completed tests. Cleaning up               ++"
-    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
     sudo multipass delete $MACHINE
     sudo multipass purge
 else
-    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
-    echo "++   Completed tests. Leaving snap installed.   ++"
-    echo "++++++++++++++++++++++++++++++++++++++++++++++++++"
+    sudo snap remove --purge microstack
 fi

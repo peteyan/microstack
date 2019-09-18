@@ -328,6 +328,7 @@ parts:
     python-version: python3
     after:
       - uca-sources
+      - patches
     constraints:
       - https://raw.githubusercontent.com/openstack/requirements/stable/stein/upper-constraints.txt
     source: http://tarballs.openstack.org/keystone/keystone-stable-stein.tar.gz
@@ -360,6 +361,16 @@ parts:
       - python3-dev
     override-prime: |
       snapcraftctl prime
+      # Patch Openstack Dashboard (horizon) settings files.
+      for patch in ${SNAPCRAFT_STAGE}/patches/horizon/*.patch; do
+        echo "Applying $(basename "$patch") ..."
+        patch \
+          --batch \
+          --forward \
+          --strip 1 \
+          --input "$patch"
+        echo
+      done
       # Uncomment the below line for better python-libvirt debugging output.
       # patch --batch --forward --strip 1 --input ../project/patches/nova/nova_log_error.patch
       # Now that everything is built, let's disable user site-packages
@@ -368,6 +379,9 @@ parts:
       # This is the last step, let's now compile all our pyc files.
       # Ignore errors due to syntax issues in foobar python 2.
       ./usr/bin/python3.6 -m compileall . || true
+    organize:
+      lib/python3.6/site-packages/openstack_dashboard/local/local_settings.py.example: lib/python3.6/site-packages/openstack_dashboard/local/local_settings.py
+
   keystone-config:
     after: [openstack-projects]
     plugin: dump

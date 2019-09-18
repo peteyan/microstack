@@ -19,6 +19,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 
+HORIZON_IP = os.environ.get("HORIZON_IP", "10.20.20.1")
+
+
 class TestHorizonlogin(unittest.TestCase):
   def setUp(self):
     self.display = xvfbwrapper.Xvfb(width=1280, height=720)
@@ -30,7 +33,7 @@ class TestHorizonlogin(unittest.TestCase):
     self.display.stop()
 
   def test_horizonlogin(self):
-    self.driver.get("http://10.20.20.1/")
+    self.driver.get("http://{horizon_ip}/".format(horizon_ip=HORIZON_IP))
     # Login to horizon!
     self.driver.find_element(By.ID, "id_username").click()
     self.driver.find_element(By.ID, "id_username").send_keys("admin")
