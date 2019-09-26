@@ -45,9 +45,10 @@ def _popen(*args: List[str], env: Dict = _env):
     """
     proc = subprocess.Popen(args, env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, bufsize=1,
-                            universal_newlines=True)
+                            universal_newlines=True, encoding='utf-8')
     for line in iter(proc.stdout.readline, ''):
         log.debug(line)
+
     proc.wait()
     return proc
 
@@ -61,10 +62,7 @@ def check(*args: List[str], env: Dict = _env) -> int:
     """
     proc = _popen(*args, env=env)
     if proc.returncode:
-        raise subprocess.CalledProcessError(
-            "Command '{}' returned non-zero exit status {}".format(
-                " ".join(args),
-                proc.returncode))
+        raise subprocess.CalledProcessError(proc.returncode, " ".join(args))
     return proc.returncode
 
 

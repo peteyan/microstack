@@ -24,8 +24,8 @@ http {
         # Logging Settings
         ##
 
-        access_log {{ snap_common }}/log/nginx-access.log;
-        error_log {{ snap_common }}/log/nginx-error.log;
+        error_log syslog:server=unix:/dev/log;
+        access_log syslog:server=unix:/dev/log;
 
         ##
         # Gzip Settings

@@ -180,6 +180,13 @@ class DatabaseSetup(Question):
         log.info('Mysql server started! Creating databases ...')
         self._create_dbs()
 
+        check('snapctl', 'set', 'database.ready=true')
+
+        # Start keystone-uwsgi. We use snapctl, because systemd
+        # doesn't yet know about the service.
+        check('snapctl', 'start', 'microstack.nginx')
+        check('snapctl', 'start', 'microstack.keystone-uwsgi')
+
         log.info('Configuring Keystone Fernet Keys ...')
         check('snap-openstack', 'launch', 'keystone-manage',
               'fernet_setup', '--keystone-user', 'root',
@@ -261,6 +268,20 @@ class NovaSetup(Question):
             "GRANT ALL PRIVILEGES ON nova_cell0.* TO 'nova'@'{extgateway}' \
             IDENTIFIED BY \'nova';".format(**_env))
 
+        # Use snapctl to start nova services.  We need to call them
+        # out manually, because systemd doesn't know about them yet.
+        # TODO: parse the output of `snapctl services` to get this
+        # list automagically.
+        for service in [
+                'microstack.nova-api',
+                'microstack.nova-api-metadata',
+                'microstack.nova-compute',
+                'microstack.nova-conductor',
+                'microstack.nova-scheduler',
+                'microstack.nova-uwsgi',
+        ]:
+            check('snapctl', 'start', service)
+
         check('snap-openstack', 'launch', 'nova-manage', 'api_db', 'sync')
 
         if 'cell0' not in check_output('snap-openstack', 'launch',
@@ -306,6 +327,15 @@ class NeutronSetup(Question):
                 call('openstack', 'endpoint', 'create', '--region',
                      'microstack', 'network', endpoint,
                      'http://{extgateway}:9696'.format(**_env))
+
+        for service in [
+                'microstack.neutron-api',
+                'microstack.neutron-dhcp-agent',
+                'microstack.neutron-l3-agent',
+                'microstack.neutron-metadata-agent',
+                'microstack.neutron-openvswitch-agent',
+        ]:
+            check('snapctl', 'start', service)
 
         check('snap-openstack', 'launch', 'neutron-db-manage', 'upgrade',
               'head')
@@ -385,6 +415,12 @@ class GlanceSetup(Question):
                       'microstack', 'image', endpoint,
                       'http://{extgateway}:9292'.format(**_env))
 
+        for service in [
+                'microstack.glance-api',
+                'microstack.registry',  # TODO rename this to glance-registery
+        ]:
+            check('snapctl', 'start', service)
+
         check('snap-openstack', 'launch', 'glance-manage', 'db_sync')
 
         restart('glance*')
@@ -405,6 +441,9 @@ class PostSetup(Question):
         # This fixes an issue w/ logging not getting set.
         # TODO: fix issue.
         restart('*virt*')
+
+        # Start horizon
+        check('snapctl', 'start', 'microstack.horizon-uwsgi')
 
         check('snapctl', 'set', 'initialized=true')
         log.info('Complete. Marked microstack as initialized!')

@@ -1,9 +1,8 @@
 [DEFAULT]
 # Set state path to writable directory
 state_path = {{ snap_common }}/lib
-
-# Set logging directory
-log-dir = {{ snap_common }}/log
+# Log to systemd journal
+use_journal = True
 
 [oslo_concurrency]
 # Oslo Concurrency lock path
