@@ -1,11 +1,21 @@
 #!/bin/bash
 set -ex
 
+# Config
+# Set default answers to the questions that microstack.init asks.
+# TODO: put this in a nice yaml format, and parse it.
 snapctl set \
-        ospassword=keystone \
-        extgateway=10.20.20.1 \
-        extcidr=10.20.20.1/24 \
-        dns=1.1.1.1
+        questions.ip-forwarding=true \
+        questions.dns=1.1.1.1 \
+        questions.ext-gateway=10.20.20.1 \
+        questions.ext-cidr=10.20.20.1/24 \
+        questions.os-password=keystone \
+        questions.rabbit-mq=true \
+        questions.database-setup=true \
+        questions.nova-setup=true \
+        questions.neutron-setup=true \
+        questions.glance-setup=true \
+        questions.post-setup=true \
 
 # MySQL snapshot for speedy install
 # snapshot is a mysql data dir with
@@ -22,6 +32,3 @@ done
 mkdir -p ${SNAP_COMMON}/etc/horizon/local_settings.d
 
 snap-openstack setup  # Sets up templates for the first time.
-
-
-

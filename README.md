@@ -28,7 +28,7 @@ To quickly configure networks and launch a vm, run
 
 This will configure various Openstack databases. Then run:
 
-`microstack.launch`.
+`microstack.launch test`.
 
 This will launch an instance for you, and make it available to manage via the command line, or via the Horizon Dashboard.
 

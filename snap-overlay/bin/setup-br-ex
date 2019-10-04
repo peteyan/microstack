@@ -9,7 +9,7 @@
 
 set -ex
 
-extcidr=$(snapctl get extcidr)
+extcidr=$(snapctl get questions.ext-cidr)
 
 # Create external integration bridge
 ovs-vsctl --retry --may-exist add-br br-ex

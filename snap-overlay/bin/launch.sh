@@ -72,4 +72,5 @@ while :; do
     fi
 done
 
+extgateway=`snapctl get questions.ext-gateway`
 echo "You can also visit the openstack dashboard at 'http://$extgateway/'"

@@ -24,6 +24,10 @@ limitations under the License.
 
 from typing import Tuple
 
+import inflection
+
+from init import shell
+
 
 class InvalidQuestion(Exception):
     """Exception to raies in the case where a Question subclass has not
@@ -56,20 +60,20 @@ class Question():
 
     """
     _valid_types = [
-        'binary',  # Yes or No, and variants thereof
+        'boolean',  # Yes or No, and variants thereof
         'string',  # Accept (and sanitize) any string
         'auto'  # Don't actually ask a question -- just execute self.yes(True)
     ]
 
     _question = '(required)'
-    _type = 'auto'  # can be binary, string or auto
+    _type = 'auto'  # can be boolean, string or auto
     _invalid_prompt = 'Please answer Yes or No.'
     _retries = 3
     _input_func = input
 
     def __init__(self):
 
-        if self._type not in ['binary', 'string', 'auto']:
+        if self._type not in ['boolean', 'string', 'auto']:
             raise InvalidQuestion(
                 'Invalid type {} specified'.format(self._type))
 
@@ -84,13 +88,11 @@ class Question():
         if self._type == 'auto':
             return True, True
 
-        answer = answer.decode('utf8')
-
         if self._type == 'string':
             # TODO Santize this!
             return answer, True
 
-        # self._type is binary
+        # self._type is boolean
         if answer.lower() in ['y', 'yes']:
             return True, True
 
@@ -99,31 +101,103 @@ class Question():
 
         return answer, False
 
+    def _load(self):
+        """Get the current value of the answer to this question.
+
+        Useful for loading defaults during init, and for loading
+        operator specified settings during updates.
+
+        """
+        # Translate the CamelCase name of this class to the dash
+        # seperated name of a key in the snapctl config.
+        key = inflection.dasherize(
+            inflection.underscore(self.__class__.__name__))
+
+        answer = shell.check_output(
+            'snapctl', 'get', 'questions.{key}'.format(key=key)
+        )
+        # Convert boolean values in to human friendly "yes" or "no"
+        # values.
+        if answer.strip().lower() == 'true':
+            answer = 'yes'
+        if answer.strip().lower() == 'false':
+            answer = 'no'
+
+        return answer
+
+    def _save(self, answer):
+        """Save off our answer, for later retrieval.
+
+        Store the value of this question's answer in the questions
+        namespace in the snap config.
+
+        """
+        key = inflection.dasherize(
+            inflection.underscore(self.__class__.__name__))
+
+        # By this time in the process 'yes' or 'no' answers will have
+        # been converted to booleans. Convert them to a lowercase
+        # 'true' or 'false' string for storage in the snapctl config.
+        if self._type == 'boolean':
+            answer = str(answer).lower()
+
+        shell.check('snapctl', 'set', 'questions.{key}={val}'.format(
+            key=key, val=answer))
+
+        return answer
+
     def yes(self, answer: str) -> None:
-        """Routine to run if the user answers 'yes' or with a value."""
-        raise AnswerNotImplemented('You must override this method.')
+        """Routine to run if the user answers 'yes' or with a value.
+
+        Can be a noop.
+
+        """
+        pass
 
     def no(self, answer: str) -> None:
-        """Routine to run if the user answers 'no'"""
-        raise AnswerNotImplemented('You must override this method.')
+        """Routine to run if the user answers 'no'
+
+        Can be a noop.
+
+        """
+        pass
+
+    def after(self, answer: str) -> None:
+        """Routine to run after the answer has been saved to snapctl config.
+
+        Can be a noop.
+
+        """
+        pass
 
     def ask(self) -> None:
-        """
-        Ask the user a question.
+        """Ask the user a question.
 
         Run self.yes or self.no as appropriate. Raise an error if the
         user cannot specify a valid answer after self._retries tries.
 
+        Save off the answer for later retrieval, and run any cleanup
+        routines.
+
         """
-        prompt = self._question
+        default = self._load()
+
+        prompt = "{question}{choice}[default={default}] > ".format(
+            question=self._question,
+            choice=' (yes/no) ' if self._type == 'boolean' else ' ',
+            default=default)
 
         for i in range(0, self._retries):
             awr, valid = self._validate(
-                self._type == 'auto' or self._input_func(prompt))
+                self._type == 'auto' or self._input_func(prompt) or default)
             if valid:
                 if awr:
-                    return self.yes(awr)
-                return self.no(awr)
-            prompt = '{} is not valid. {}'.format(awr, self._invalid_prompt)
+                    self.yes(awr)
+                else:
+                    self.no(awr)
+                self._save(awr)
+                self.after(awr)
+                return awr
+            prompt = '{} is not valid. {} > '.format(awr, self._invalid_prompt)
 
         raise InvalidAnswer('Too many invalid answers.')

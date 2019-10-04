@@ -85,7 +85,7 @@ fi
 
 # Install the snap under test -- try again if the machine is not yet ready.
 $PREFIX sudo snap install --classic --dangerous microstack*.snap
-$PREFIX sudo /snap/bin/microstack.init
+$PREFIX sudo /snap/bin/microstack.init --auto
 
 # Comment out the above and uncomment below to install the version of
 # the snap from the store.

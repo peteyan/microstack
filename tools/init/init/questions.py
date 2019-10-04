@@ -43,31 +43,27 @@ class ConfigError(Exception):
     """
 
 
-class Setup(Question):
-    """Prepare our environment.
+class ConfigQuestion(Question):
+    """Question class that simply asks for and sets a config value.
 
-    Check to make sure that everything is in place, and populate our
-    config object and os.environ with the correct values.
+    All we need to do is run 'snap-openstack setup' after we have saved
+    off the value. The value to be set is specified by the name of the
+    question class.
 
     """
-    def yes(self, answer: str) -> None:
-        """Since this is an auto question, we always execute yes."""
-        log.info('Loading config and writing templates ...')
+    def after(self, answer):
+        """Our value has been saved.
 
-        log.info('Validating config ...')
-        for key in ['ospassword', 'extgateway', 'extcidr', 'dns']:
-            val = check_output('snapctl', 'get', key)
-            if not val:
-                raise ConfigError(
-                    'Expected config value {} is not set.'.format(key))
-            _env[key] = val
+        Run 'snap-openstack setup' to write it out, and load any changes to
+        microstack.rc.
 
-        log.info('Writing out templates ...')
+        # TODO this is a bit messy and redundant. Come up with a clean
+        way of loading and writing config after the run of
+        ConfigQuestions have been asked.
+
+        """
         check('snap-openstack', 'setup')
 
-        # Parse microstack.rc, and load into _env
-        # TODO: write something more robust (this breaks on comments
-        # at end of line.)
         mstackrc = '{SNAP_COMMON}/etc/microstack.rc'.format(**_env)
         with open(mstackrc, 'r') as rc_file:
             for line in rc_file.readlines():
@@ -77,10 +73,73 @@ class Setup(Question):
                 _env[key.strip()] = val.strip()
 
 
+class Dns(Question):
+    """Possibly override default dns."""
+
+    _type = 'string'
+    _question = 'DNS to use'
+
+    def yes(self, answer: str):
+        """Override the default dhcp_agent.ini file."""
+
+        file_path = '{SNAP_COMMON}/etc/neutron/dhcp_agent.ini'.format(**_env)
+
+        with open(file_path, 'w') as f:
+            f.write("""\
+[DEFAULT]
+interface_driver = openvswitch
+dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq
+enable_isolated_metadata = True
+dnsmasq_dns_servers = {answer}
+""".format(answer=answer))
+
+        # Neutron is not actually started at this point, so we don't
+        # need to restart.
+        # TODO: This isn't idempotent, because it will behave
+        # differently if we re-run this script when neutron *is*
+        # started. Need to figure that out.
+
+
+class ExtGateway(ConfigQuestion):
+    """Possibly override default ext gateway."""
+
+    _type = 'string'
+    _question = 'External Gateway'
+
+    def yes(self, answer):
+        # Preserve old behavior.
+        # TODO: update this
+        _env['extgateway'] = answer
+
+
+class ExtCidr(ConfigQuestion):
+    """Possibly override the cidr."""
+
+    _type = 'string'
+    _question = 'External Ip Range'
+
+    def yes(self, answer):
+        # Preserve old behavior.
+        # TODO: update this
+        _env['extcidr'] = answer
+
+
+class OsPassword(ConfigQuestion):
+    _type = 'string'
+    _question = 'Openstack Admin Password'
+
+    def yes(self, answer):
+        # Preserve old behavior.
+        # TODO: update this
+        _env['ospassword'] = answer
+
+    # TODO obfuscate the password!
+
+
 class IpForwarding(Question):
     """Possibly setup IP forwarding."""
 
-    _type = 'auto'  # Auto for now, to maintain old behavior.
+    _type = 'boolean'  # Auto for now, to maintain old behavior.
     _question = 'Do you wish to setup ip forwarding? (recommended)'
 
     def yes(self, answer: str) -> None:
@@ -92,7 +151,7 @@ class IpForwarding(Question):
 
 class VmSwappiness(Question):
 
-    _type = 'binary'
+    _type = 'boolean'
     _question = 'Do you wish to set vm swappiness to 1? (recommended)'
 
     def yes(self, answer: str) -> None:
@@ -102,7 +161,7 @@ class VmSwappiness(Question):
 
 class FileHandleLimits(Question):
 
-    _type = 'binary'
+    _type = 'boolean'
     _question = 'Do you wish to increase file handle limits? (recommended)'
 
     def yes(self, answer: str) -> None:
@@ -110,8 +169,10 @@ class FileHandleLimits(Question):
         pass
 
 
-class RabbitMQ(Question):
+class RabbitMq(Question):
     """Wait for Rabbit to start, then setup permissions."""
+
+    _type = 'boolean'
 
     def _wait(self) -> None:
         nc_wait(_env['extgateway'], '5672')
@@ -141,6 +202,8 @@ class RabbitMQ(Question):
 
 class DatabaseSetup(Question):
     """Setup keystone permissions, then setup all databases."""
+
+    _type = 'boolean'
 
     def _wait(self) -> None:
         nc_wait(_env['extgateway'], '3306')
@@ -209,6 +272,8 @@ class DatabaseSetup(Question):
 
 class NovaSetup(Question):
     """Create all relevant nova users and services."""
+
+    _type = 'boolean'
 
     def _flavors(self) -> None:
         """Create default flavors."""
@@ -311,6 +376,8 @@ class NovaSetup(Question):
 class NeutronSetup(Question):
     """Create all relevant neutron services and users."""
 
+    _type = 'boolean'
+
     def yes(self, answer: str) -> None:
         log.info('Configuring Neutron')
 
@@ -372,6 +439,8 @@ class NeutronSetup(Question):
 
 class GlanceSetup(Question):
     """Setup glance, and download an initial Cirros image."""
+
+    _type = 'boolean'
 
     def _fetch_cirros(self) -> None:
 

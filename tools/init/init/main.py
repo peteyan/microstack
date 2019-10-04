@@ -33,16 +33,27 @@ import sys
 from init.config import log
 
 from init import questions
+from init.shell import check
+
+# Figure out whether to prompt for user input, and which type of node
+# we're running.
+# TODO drop in argparse and formalize this.
+COMPUTE = '--compute' in sys.argv
+CONTROL = '--control' in sys.argv
+AUTO = ('--auto' in sys.argv) or COMPUTE or CONTROL
 
 
 def main() -> None:
     question_list = [
-        questions.Setup(),
+        questions.Dns(),
+        questions.ExtGateway(),
+        questions.ExtCidr(),
+        questions.OsPassword(),  # TODO: turn this off if COMPUTE.
         questions.IpForwarding(),
         # The following are not yet implemented:
         # questions.VmSwappiness(),
         # questions.FileHandleLimits(),
-        questions.RabbitMQ(),
+        questions.RabbitMq(),
         questions.DatabaseSetup(),
         questions.NovaSetup(),
         questions.NeutronSetup(),
@@ -50,7 +61,27 @@ def main() -> None:
         questions.PostSetup(),
     ]
 
+    # If we are setting up a "control" or "compute" node, override
+    # some of the default yes/no questions.
+    # TODO: move this into a nice little yaml parsing lib, and
+    # allow people to pass in a config file from the command line.
+    if CONTROL:
+        check('snapctl', 'set', 'questions.nova-setup=false')
+
+    if COMPUTE:
+        check('snapctl', 'set', 'questions.rabbit-mq=false')
+        check('snapctl', 'set', 'questions.database-setup=false')
+        check('snapctl', 'set', 'questions.neutron-setup=false')
+        check('snapctl', 'set', 'questions.glance-setup=false')
+
     for question in question_list:
+        if AUTO:
+            # If we are automatically answering questions, replace the
+            # prompt for user input with a function that returns None,
+            # causing the question to fall back to the already set
+            # default
+            question._input_func = lambda prompt: None
+
         try:
             question.ask()
         except questions.ConfigError as e:

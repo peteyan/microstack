@@ -2,6 +2,8 @@ import sys
 import os
 import unittest
 
+import mock
+
 # TODO: drop in test runner and get rid of this line.
 sys.path.append(os.getcwd())  # noqa
 
@@ -20,10 +22,6 @@ class InvalidTypeQuestion(Question):
     _type = 'foo'
 
 
-class IncompleteQuestion(Question):
-    _type = 'auto'
-
-
 class GoodAutoQuestion(Question):
     _type = 'auto'
 
@@ -31,8 +29,8 @@ class GoodAutoQuestion(Question):
         return 'I am a good question!'
 
 
-class GoodBinaryQuestion(Question):
-    _type = 'binary'
+class GoodBooleanQuestion(Question):
+    _type = 'boolean'
 
     def yes(self, answer):
         return True
@@ -77,16 +75,14 @@ class TestQuestionClass(unittest.TestCase):
 
     def test_valid_type(self):
 
-        self.assertTrue(GoodBinaryQuestion())
+        self.assertTrue(GoodBooleanQuestion())
 
-    def test_not_implemented(self):
+    @mock.patch('init.question.shell.check_output')
+    @mock.patch('init.question.shell.check')
+    def test_auto_question(self, mock_check, mock_check_output):
+        mock_check_output.return_value = ''
 
-        with self.assertRaises(AnswerNotImplemented):
-            IncompleteQuestion().ask()
-
-    def test_auto_question(self):
-
-        self.assertEqual(GoodAutoQuestion().ask(), 'I am a good question!')
+        self.assertEqual(GoodAutoQuestion().ask(), True)
 
 
 class TestInput(unittest.TestCase):
@@ -97,28 +93,39 @@ class TestInput(unittest.TestCase):
     class's input handler.
 
     """
-    def test_binary_question(self):
+    @mock.patch('init.question.shell.check_output')
+    @mock.patch('init.question.shell.check')
+    def test_boolean_question(self, mock_check, mock_check_output):
+        mock_check_output.return_value = 'true'
 
-        q = GoodBinaryQuestion()
+        q = GoodBooleanQuestion()
 
         for answer in ['yes', 'Yes', 'y']:
-            q._input_func = lambda x: answer.encode('utf8')
+            q._input_func = lambda x: answer
             self.assertTrue(q.ask())
 
         for answer in ['No', 'n', 'no']:
-            q._input_func = lambda x: answer.encode('utf8')
+            q._input_func = lambda x: answer
             self.assertFalse(q.ask())
 
         with self.assertRaises(InvalidAnswer):
-            q._input_func = lambda x: 'foo'.encode('utf8')
+            q._input_func = lambda x: 'foo'
             q.ask()
 
-    def test_string_question(self):
+    @mock.patch('init.question.shell.check_output')
+    @mock.patch('init.question.shell.check')
+    def test_string_question(self, mock_check, mock_check_output):
+        mock_check_output.return_value = 'somedefault'
+
         q = GoodStringQuestion()
 
-        for answer in ['foo', 'bar', 'baz', '', 'yadayadayada']:
-            q._input_func = lambda x: answer.encode('utf8')
+        for answer in ['foo', 'bar', 'baz', 'yadayadayada']:
+            q._input_func = lambda x: answer
             self.assertEqual(answer, q.ask())
+
+        # Verify that a blank answer defaults properly
+        q._input_func = lambda x: ''
+        self.assertEqual('somedefault', q.ask())
 
 
 if __name__ == '__main__':

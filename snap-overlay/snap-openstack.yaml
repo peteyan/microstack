@@ -57,10 +57,10 @@ setup:
     "{snap_common}/instances": 0755
     "{snap_common}/etc/microstack.rc": 0644
   snap-config-keys:
-    ospassword: 'ospassword'
-    extgateway: 'extgateway'
-    extcidr: 'extcidr'
-    dns: 'dns'
+    ospassword: 'questions.os-password'
+    extgateway: 'questions.ext-gateway'
+    extcidr: 'questions.ext-cidr'
+    dns: 'questions.dns'
 entry_points:
   keystone-manage:
     binary: "{snap}/bin/keystone-manage"

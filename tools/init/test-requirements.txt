@@ -1,4 +1,5 @@
+flake8
+mock
 pylint
 pep8
 stestr
-flake8
