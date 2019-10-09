@@ -1,3 +1,5 @@
+flake8
 petname
 selenium
+stestr
 xvfbwrapper

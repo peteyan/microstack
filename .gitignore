@@ -9,6 +9,7 @@ microstack_source.tar.bz2
 prime/
 snap/.snapcraft
 stage/
+dump.tar.gz
 
 # Emacs
 *~

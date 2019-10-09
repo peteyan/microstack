@@ -50,6 +50,7 @@ def main() -> None:
         questions.ExtCidr(),
         questions.OsPassword(),  # TODO: turn this off if COMPUTE.
         questions.IpForwarding(),
+        questions.ForceQemu(),
         # The following are not yet implemented:
         # questions.VmSwappiness(),
         # questions.FileHandleLimits(),

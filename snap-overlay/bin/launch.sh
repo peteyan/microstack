@@ -67,7 +67,7 @@ while :; do
     fi
     if [[ $(openstack server list | grep $SERVER | grep ERROR) ]]; then
         openstack server list
-        echo "Uh-oh. There was an error. See /var/snap/microstack/common/log for details."
+        echo "Uh-oh. There was an error. Run `journalctl -xe` for details."
         exit 1
     fi
 done

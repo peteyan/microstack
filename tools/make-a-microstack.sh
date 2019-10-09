@@ -1,18 +1,18 @@
 #!/bin/bash
 ##############################################################################
 #
-# This is a "very basic" test script for Microstack. It will install
-# the microstack snap on a vm, and dump you into a shell on the vm for
-# troubleshooting.
+# Make a microstack!
 #
-# The multipass snap and the petname debian package must be installed
-# on the host system in order to run this test.
+# This is a tool to very quickly spin up a multipass vm, install
+# microstack (from the compiled local .snap), and get a shell in
+# microstack's environment.
+#
+# It requires that you have installed petname.
 #
 ##############################################################################
 
 set -ex
 
-UPGRADE_FROM="none"
 DISTRO=18.04
 MACHINE=$(petname)
 
@@ -26,5 +26,5 @@ multipass exec $MACHINE -- \
 
 # Drop the user into a snap shell, as root.
 multipass exec $MACHINE -- \
-          sudo snap run --shell microstack.launch
+          sudo snap run --shell microstack.init
 

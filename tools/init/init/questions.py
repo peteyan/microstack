@@ -149,6 +149,37 @@ class IpForwarding(Question):
         check('sysctl', 'net.ipv4.ip_forward=1')
 
 
+class ForceQemu(Question):
+    _type = 'auto'
+
+    def yes(self, answer: str) -> None:
+        """Possibly force us to use qemu emulation rather than kvm."""
+
+        cpuinfo = check_output('cat', '/proc/cpuinfo')
+        if 'vmx' in cpuinfo or 'svm' in cpuinfo:
+            # We have processor extensions installed. No need to Force
+            # Qemu emulation.
+            return
+
+        _path = '{SNAP_COMMON}/etc/nova/nova.conf.d/hypervisor.conf'.format(
+            **_env)
+
+        with open(_path, 'w') as _file:
+            _file.write("""\
+[DEFAULT]
+compute_driver = libvirt.LibvirtDriver
+
+[workarounds]
+disable_rootwrap = True
+
+[libvirt]
+virt_type = qemu
+cpu_mode = host-model
+""")
+
+        # TODO: restart nova services when re-running this after init.
+
+
 class VmSwappiness(Question):
 
     _type = 'boolean'
