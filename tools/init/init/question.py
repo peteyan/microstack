@@ -77,7 +77,7 @@ class Question():
             raise InvalidQuestion(
                 'Invalid type {} specified'.format(self._type))
 
-    def _validate(self, answer: bytes) -> Tuple[str, bool]:
+    def _validate(self, answer: str) -> Tuple[str, bool]:
         """Validate an answer.
 
         :param anwser: raw input from the user.
@@ -89,7 +89,9 @@ class Question():
             return True, True
 
         if self._type == 'string':
-            # TODO Santize this!
+            # Allow people to negate a string by passing nil.
+            if answer.lower() == 'nil':
+                return None, True
             return answer, True
 
         # self._type is boolean

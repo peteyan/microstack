@@ -17,28 +17,8 @@ else
     SERVER=$1
 fi
 
-if [[ ! $(openstack keypair list | grep "| microstack |") ]]; then
-    echo "creating keypair ($HOME/.ssh/id_microstack)"
-    mkdir -p $HOME/.ssh
-    chmod 700 $HOME/.ssh
-    openstack keypair create microstack > $HOME/.ssh/id_microstack
-    chmod 600 $HOME/.ssh/id_microstack
-fi
-
 echo "Launching instance ..."
 openstack server create --flavor m1.tiny --image cirros --nic net-id=test --key-name microstack $SERVER
-
-echo "Checking security groups ..."
-SECGROUP_ID=`openstack security group list --project admin -f value -c ID`
-if [[ ! $(openstack security group rule list | grep icmp | grep $SECGROUP_ID) ]]; then
-    echo "Creating security group rule for ping."
-    openstack security group rule create $SECGROUP_ID --proto icmp
-fi
-
-if [[ ! $(openstack security group rule list | grep tcp | grep $SECGROUP_ID) ]]; then
-    echo "Creating security group rule for ssh."
-    openstack security group rule create $SECGROUP_ID --proto tcp --dst-port 22
-fi
 
 TRIES=0
 while [[ $(openstack server list | grep $SERVER | grep ERROR) ]]; do

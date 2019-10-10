@@ -1,7 +1,7 @@
 - job:
     name: microstack-tox-snap-with-sudo
     parent: openstack-tox-snap-with-sudo
-    timeout: 7200
+    timeout: 5400
     nodeset: ubuntu-bionic
     vars:
       tox_envlist: snap

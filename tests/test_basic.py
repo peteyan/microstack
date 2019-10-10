@@ -56,7 +56,8 @@ class TestBasics(Framework):
 
         print("Testing microstack.launch ...")
 
-        check(*self.PREFIX, launch, 'breakfast')
+        check(*self.PREFIX, launch, 'cirros', '--name', 'breakfast',
+              '--retry')
 
         endpoints = check_output(
             *self.PREFIX, '/snap/bin/microstack.openstack', 'endpoint', 'list')
@@ -82,8 +83,8 @@ class TestBasics(Framework):
         self.assertTrue(ip)
 
         pings = 1
-        max_pings = 40
-        while not call(*self.PREFIX, 'ping', '-c', '1', ip):
+        max_pings = 600  # ~10 minutes!
+        while not call(*self.PREFIX, 'ping', '-c1', '-w1', ip):
             pings += 1
             if pings > max_pings:
                 self.assertFalse(True, msg='Max pings reached!')
@@ -91,7 +92,7 @@ class TestBasics(Framework):
         print("Testing instances' ability to connect to the Internet")
         # Test Internet connectivity
         attempts = 1
-        max_attempts = 40
+        max_attempts = 300  # ~10 minutes!
         username = check_output(*self.PREFIX, 'whoami')
 
         while not call(
@@ -100,11 +101,11 @@ class TestBasics(Framework):
                 '-oStrictHostKeyChecking=no',
                 '-i', '/home/{}/.ssh/id_microstack'.format(username),
                 'cirros@{}'.format(ip),
-                '--', 'ping', '-c', '1', '91.189.94.250'):
+                '--', 'ping', '-c1', '91.189.94.250'):
             attempts += 1
             if attempts > max_attempts:
                 self.assertFalse(True, msg='Unable to access the Internet!')
-            time.sleep(5)
+            time.sleep(1)
 
         if 'multipass' in self.PREFIX:
             print("Opening {}:80 up to the outside world".format(

@@ -15,6 +15,8 @@ snapctl set \
         questions.nova-setup=true \
         questions.neutron-setup=true \
         questions.glance-setup=true \
+        questions.key-pair="id_microstack" \
+        questions.security-rules=true \
         questions.post-setup=true \
 
 # MySQL snapshot for speedy install

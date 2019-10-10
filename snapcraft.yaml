@@ -303,7 +303,7 @@ apps:
   # Utility to launch a vm. Creates security groups, floating ips,
   # and other necessities as well.
   launch:
-    command: bin/launch.sh
+    command: microstack_launch
 #    plugs:
 #      - network
 
@@ -820,3 +820,11 @@ parts:
     requirements:
       - requirements.txt  # Relative to source path, so tools/init/req...txt
     source: tools/init
+
+  # Launch script
+  launch:
+    plugin: python
+    python-version: python3
+    requirements:
+      - requirements.txt
+    source: tools/launch

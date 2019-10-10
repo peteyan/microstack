@@ -23,7 +23,7 @@ limitations under the License.
 
 """
 
-
+import json
 from time import sleep
 from os import path
 
@@ -530,6 +530,67 @@ class GlanceSetup(Question):
         sleep(5)  # TODO: log_wait
 
         self._fetch_cirros()
+
+
+class KeyPair(Question):
+    """Create a keypair for ssh access to instances.
+
+    TODO: split the asking from executing of questions, as ask about
+    this up front. (This needs to run at the end, but for user
+    experience reasons, we really want to ask all the non auto
+    questions at the beginning.)
+    """
+    _type = 'string'
+
+    def yes(self, answer: str) -> None:
+
+        if 'microstack' not in check_output('openstack', 'keypair', 'list'):
+            log.info('Creating microstack keypair (~/.ssh/{})'.format(answer))
+            check('mkdir', '-p', '{HOME}/.ssh'.format(**_env))
+            check('chmod', '700', '{HOME}/.ssh'.format(**_env))
+            id_ = check_output('openstack', 'keypair', 'create', 'microstack')
+            id_path = '{HOME}/.ssh/{answer}'.format(
+                HOME=_env['HOME'],
+                answer=answer
+            )
+
+            with open(id_path, 'w') as file_:
+                file_.write(id_)
+            check('chmod', '600', id_path)
+            # TODO: too many assumptions in the below. Make it portable!
+            user = _env['HOME'].split("/")[2]
+            check('chown', '{}:{}'.format(user, user), id_path)
+
+
+class SecurityRules(Question):
+    """Setup default security rules."""
+
+    _type = 'boolean'
+
+    def yes(self, answer: str) -> None:
+        # Create security group rules
+        log.info('Creating security group rules ...')
+        group_id = check_output('openstack', 'security', 'group', 'list',
+                                '--project', 'admin', '-f', 'value',
+                                '-c', 'ID')
+        rules = check_output('openstack', 'security', 'group', 'rule', 'list',
+                             '--format', 'json')
+        ping_rule = False
+        ssh_rule = False
+
+        for rule in json.loads(rules):
+            if rule['Security Group'] == group_id:
+                if rule['IP Protocol'] == 'icmp':
+                    ping_rule = True
+                if rule['IP Protocol'] == 'tcp':
+                    ssh_rule = True
+
+        if not ping_rule:
+            check('openstack', 'security', 'group', 'rule', 'create',
+                  group_id, '--proto', 'icmp')
+        if not ssh_rule:
+            check('openstack', 'security', 'group', 'rule', 'create',
+                  group_id, '--proto', 'tcp', '--dst-port', '22')
 
 
 class PostSetup(Question):

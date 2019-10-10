@@ -59,6 +59,8 @@ def main() -> None:
         questions.NovaSetup(),
         questions.NeutronSetup(),
         questions.GlanceSetup(),
+        questions.KeyPair(),
+        questions.SecurityRules(),
         questions.PostSetup(),
     ]
 
@@ -68,6 +70,8 @@ def main() -> None:
     # allow people to pass in a config file from the command line.
     if CONTROL:
         check('snapctl', 'set', 'questions.nova-setup=false')
+        check('snapctl', 'set', 'questions.key-pair=nil')
+        check('snapctl', 'set', 'questions.security-rules=false')
 
     if COMPUTE:
         check('snapctl', 'set', 'questions.rabbit-mq=false')

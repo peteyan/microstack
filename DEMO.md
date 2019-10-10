@@ -114,10 +114,9 @@ sudo systemctl restart snap.microstack.*
 
 Create a test instance in your cloud.
 
-`microstack.launch test`
+`microstack.launch cirros --name test`
 
-This will launch a machine using the built-in cirros image, and also
-do some other nice things like setting up security groups. Once the
+This will launch a machine using the built-in cirros image. Once the
 machine is setup, verify that you can ping it, then tear it down.
 
 ```
@@ -171,7 +170,7 @@ You'll need to load microstack credentials. You can temporarily drop
 into the microstack snap's shell environment to make this easy.
 
 ```
-snap run --shell microstack.launch
+snap run --shell microstack.init
 juju autoload-credentials
 exit
 ```
