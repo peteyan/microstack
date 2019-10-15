@@ -1,28 +1,61 @@
 #!/bin/bash
 set -ex
 
-# Config
-# Set default answers to the questions that microstack.init asks.
+# Initialize Config
 # TODO: put this in a nice yaml format, and parse it.
+
+# General snap-wide settings
 snapctl set \
-        questions.ip-forwarding=true \
-        questions.dns=1.1.1.1 \
-        questions.ext-gateway=10.20.20.1 \
-        questions.ext-cidr=10.20.20.1/24 \
-        questions.os-password=keystone \
-        questions.rabbit-mq=true \
-        questions.database-setup=true \
-        questions.nova-setup=true \
-        questions.neutron-setup=true \
-        questions.glance-setup=true \
-        questions.key-pair="id_microstack" \
-        questions.security-rules=true \
-        questions.post-setup=true \
+        config.clustered=false \
+        config.post-setup=true \
+        ;
+
+# Networking related settings.
+snapctl set \
+        config.network.dns=1.1.1.1 \
+        config.network.ext-gateway=10.20.20.1 \
+        config.network.control-ip=10.20.20.1 \
+        config.network.compute-ip=10.20.20.1 \
+        config.network.ext-cidr=10.20.20.1/24 \
+        config.network.security-rules=true \
+        ;
+
+# Passwords, certs, etc.
+snapctl set \
+        config.credentials.os-password=keystone \
+        config.credentials.key-pair=id_microstack \
+        config.credentials.nova-password=nova \
+        config.credentials.neutron-password=neutron \
+        config.credentials.placement-password=placement \
+        config.credentials.glance-password=glance \
+        ;
+
+# Host optimizations and fixes.
+snapctl set \
+        config.host.ip-forwarding=true \
+        config.host.check-qemu=true \
+        ;
+
+# Enable or disable groups of services.
+snapctl set \
+        config.services.control-plane=true \
+        config.services.hypervisor=true \
+        ;
+
+# Clustering roles
+snapctl set \
+        cluster.role=control \
+        cluster.password=null \
+        ;
 
 # MySQL snapshot for speedy install
 # snapshot is a mysql data dir with
 # rocky keystone,nova,glance,neutron dbs.
 mkdir -p ${SNAP_COMMON}/lib
+
+# Put cirros (and potentially other) images in a user writeable place.
+mkdir -p ${SNAP_COMMON}/images
+cp ${SNAP}/images/* ${SNAP_COMMON}/images/
 
 # Install conf.d configuration from snap for db etc
 echo "Installing configuration for OpenStack Services"

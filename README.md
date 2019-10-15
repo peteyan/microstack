@@ -123,3 +123,40 @@ sudo snap enable microstack
 ## Raising a Bug
 
 Please report bugs to the microstack project on launchpad: https://bugs.launchpad.net/microstack
+
+## Clustering Preview
+
+The latests --edge version of the clustering snap contains a preview of microstack's clustering functionality. If you're interested in building a small "edge" cloud with microstack, please take a look at the notes below. Keep in mind that this is preview functionality. Interfaces may not be stable, and the security of the preview is light, and not suitable for production use!
+
+To setup a cluster, you first must setup a control node. Do so with the following commands:
+
+```
+sudo snap install microstack
+sudo microstack.init
+```
+
+Answer the questions in the interactive prompt as follows:
+
+```
+Clustering: yes
+Role: control
+IP Address: Note and accept the default
+```
+
+On a second machine, run:
+
+```
+sudo snap install microstack
+sudo microstack.init
+```
+
+Answer the questions in the interactive prompt as follows:
+
+```
+Setup clustering: yes
+Role: compute
+Control IP: the ip address noted above
+Compute IP: accept the default
+```
+
+You should now have a small, two node cloud, with the first node serving as both the control plane and a hypvervisor, and the second node serving as a hypervisor. You can create vms on both.

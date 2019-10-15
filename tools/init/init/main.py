@@ -28,23 +28,72 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
+
+import argparse
+import logging
+import secrets
+import string
 import sys
 
 from init.config import log
-
-from init import questions
 from init.shell import check
 
-# Figure out whether to prompt for user input, and which type of node
-# we're running.
-# TODO drop in argparse and formalize this.
-COMPUTE = '--compute' in sys.argv
-CONTROL = '--control' in sys.argv
-AUTO = ('--auto' in sys.argv) or COMPUTE or CONTROL
+from init import questions
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--auto', '-a', action='store_true',
+                        help='Run non interactively.')
+    parser.add_argument('--cluster-password')
+    parser.add_argument('--compute', action='store_true')
+    parser.add_argument('--control', action='store_true')
+    parser.add_argument('--debug', action='store_true')
+    args = parser.parse_args()
+    return args
+
+
+def process_args(args):
+    """Look through our args object and set the proper default config
+    values in our snap config, based on those args.
+
+    """
+    auto = args.auto or args.control or args.compute
+
+    if args.compute or args.control:
+        check('snapctl', 'set', 'config.clustered=true')
+
+    if args.compute:
+        check('snapctl', 'set', 'config.cluster.role=compute')
+
+    if args.control:
+        # If both compute and control are passed for some reason, we
+        # wind up with the role of 'control', which is best, as a
+        # control node also serves as a compute node in our hyper
+        # converged architecture.
+        check('snapctl', 'set', 'config.cluster.role=control')
+
+    if args.cluster_password:
+        check('snapctl', 'set', 'config.cluster.password={}'.format(
+            args.cluster_password))
+
+    if auto and not args.cluster_password:
+        alphabet = string.ascii_letters + string.digits
+        password = ''.join(secrets.choice(alphabet) for i in range(10))
+        check('snapctl', 'set', 'config.cluster.password={}'.format(password))
+
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+
+    return auto
 
 
 def main() -> None:
+    args = parse_args()
+    auto = process_args(args)
+
     question_list = [
+        questions.Clustering(),
         questions.Dns(),
         questions.ExtGateway(),
         questions.ExtCidr(),
@@ -56,36 +105,19 @@ def main() -> None:
         # questions.FileHandleLimits(),
         questions.RabbitMq(),
         questions.DatabaseSetup(),
-        questions.NovaSetup(),
-        questions.NeutronSetup(),
+        questions.NovaHypervisor(),
+        questions.NovaControlPlane(),
+        questions.NeutronControlPlane(),
         questions.GlanceSetup(),
         questions.KeyPair(),
         questions.SecurityRules(),
         questions.PostSetup(),
     ]
 
-    # If we are setting up a "control" or "compute" node, override
-    # some of the default yes/no questions.
-    # TODO: move this into a nice little yaml parsing lib, and
-    # allow people to pass in a config file from the command line.
-    if CONTROL:
-        check('snapctl', 'set', 'questions.nova-setup=false')
-        check('snapctl', 'set', 'questions.key-pair=nil')
-        check('snapctl', 'set', 'questions.security-rules=false')
-
-    if COMPUTE:
-        check('snapctl', 'set', 'questions.rabbit-mq=false')
-        check('snapctl', 'set', 'questions.database-setup=false')
-        check('snapctl', 'set', 'questions.neutron-setup=false')
-        check('snapctl', 'set', 'questions.glance-setup=false')
-
     for question in question_list:
-        if AUTO:
-            # If we are automatically answering questions, replace the
-            # prompt for user input with a function that returns None,
-            # causing the question to fall back to the already set
-            # default
-            question._input_func = lambda prompt: None
+        if auto:
+            # Force all questions to be non-interactive if we passed --auto.
+            question.interactive = False
 
         try:
             question.ask()

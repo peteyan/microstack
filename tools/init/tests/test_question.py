@@ -7,8 +7,8 @@ import mock
 # TODO: drop in test runner and get rid of this line.
 sys.path.append(os.getcwd())  # noqa
 
-from init.question import (Question, InvalidQuestion, InvalidAnswer,
-                           AnswerNotImplemented)
+from init.questions.question import (Question, InvalidQuestion, InvalidAnswer,
+                                     AnswerNotImplemented)
 
 
 ##############################################################################
@@ -20,10 +20,12 @@ from init.question import (Question, InvalidQuestion, InvalidAnswer,
 
 class InvalidTypeQuestion(Question):
     _type = 'foo'
+    config_key = 'invalid-type'
 
 
 class GoodAutoQuestion(Question):
     _type = 'auto'
+    config_key = 'good-auto-question'
 
     def yes(self, answer):
         return 'I am a good question!'
@@ -31,6 +33,7 @@ class GoodAutoQuestion(Question):
 
 class GoodBooleanQuestion(Question):
     _type = 'boolean'
+    config_key = 'good-bool-question'
 
     def yes(self, answer):
         return True
@@ -48,6 +51,7 @@ class GoodStringQuestion(Question):
 
     """
     _type = 'string'
+    config_key = 'good-string-question'
 
     def yes(self, answer):
         return answer
@@ -77,8 +81,8 @@ class TestQuestionClass(unittest.TestCase):
 
         self.assertTrue(GoodBooleanQuestion())
 
-    @mock.patch('init.question.shell.check_output')
-    @mock.patch('init.question.shell.check')
+    @mock.patch('init.questions.question.shell.check_output')
+    @mock.patch('init.questions.question.shell.check')
     def test_auto_question(self, mock_check, mock_check_output):
         mock_check_output.return_value = ''
 
@@ -93,8 +97,8 @@ class TestInput(unittest.TestCase):
     class's input handler.
 
     """
-    @mock.patch('init.question.shell.check_output')
-    @mock.patch('init.question.shell.check')
+    @mock.patch('init.questions.question.shell.check_output')
+    @mock.patch('init.questions.question.shell.check')
     def test_boolean_question(self, mock_check, mock_check_output):
         mock_check_output.return_value = 'true'
 
@@ -112,8 +116,8 @@ class TestInput(unittest.TestCase):
             q._input_func = lambda x: 'foo'
             q.ask()
 
-    @mock.patch('init.question.shell.check_output')
-    @mock.patch('init.question.shell.check')
+    @mock.patch('init.questions.question.shell.check_output')
+    @mock.patch('init.questions.question.shell.check')
     def test_string_question(self, mock_check, mock_check_output):
         mock_check_output.return_value = 'somedefault'
 

@@ -27,6 +27,8 @@ import subprocess
 from time import sleep
 from typing import Dict, List
 
+import netaddr
+import netifaces
 import pymysql
 import wget
 
@@ -163,6 +165,42 @@ def restart(service: str) -> None:
     check('systemctl', 'restart', 'snap.microstack.{}'.format(service))
 
 
+def disable(service: str) -> None:
+    """Disable and mask a service.
+
+    :param service: the service(s) to be disabled. Can contain wild cards.
+                    e.g. *rabbit*
+
+    """
+    check('systemctl', 'disable', 'snap.microstack.{}'.format(service))
+    check('systemctl', 'mask', 'snap.microstack.{}'.format(service))
+
+
 def download(url: str, output: str) -> None:
     """Download a file to a path"""
     wget.download(url, output)
+
+
+def fetch_ip_address():
+    try:
+        interface = netifaces.gateways()['default'][netifaces.AF_INET][1]
+        return netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+    except (KeyError, IndexError):
+        log.exception('Failed to get ip address!')
+        return None
+
+
+def default_network():
+    """Get info about the default netowrk.
+
+    """
+    gateway, interface = netifaces.gateways()['default'][netifaces.AF_INET]
+    netmask = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['netmask']
+    ip_address = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+    bits = netaddr.IPAddress(netmask).netmask_bits()
+    # TODO: better way to do this!
+    cidr = gateway.split('.')
+    cidr[-1] = '0/{}'.format(bits)
+    cidr = '.'.join(cidr)
+
+    return ip_address, gateway, cidr

@@ -52,15 +52,22 @@ setup:
     neutron.keystone.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/keystone.conf"
     neutron.nova.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/nova.conf"
     neutron.database.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/database.conf"
+    neutron.conf.d.rabbitmq.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/rabbitmq.conf"
 
   chmod:
     "{snap_common}/instances": 0755
     "{snap_common}/etc/microstack.rc": 0644
   snap-config-keys:
-    ospassword: 'questions.os-password'
-    extgateway: 'questions.ext-gateway'
-    extcidr: 'questions.ext-cidr'
-    dns: 'questions.dns'
+    ospassword: 'config.credentials.os-password'
+    nova_password: 'config.credentials.nova-password'
+    neutron_password: 'config.credentials.neutron-password'
+    placement_password: 'config.credentials.placement-password'
+    glance_password: 'config.credentials.glance-password'
+    control_ip: 'config.network.control-ip'
+    compute_ip: 'config.network.compute-ip'
+    extgateway: 'config.network.ext-gateway'
+    extcidr: 'config.network.ext-cidr'
+    dns: 'config.network.dns'
 entry_points:
   keystone-manage:
     binary: "{snap}/bin/keystone-manage"

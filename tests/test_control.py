@@ -26,6 +26,10 @@ class TestControlNode(Framework):
     INIT_FLAG = 'control'
 
     def test_control_node(self):
+        """A control node has all services running, so this shouldn't be any
+        different than our standard setup.
+
+        """
 
         print("Checking output of services ...")
         services = check_output(
@@ -35,7 +39,6 @@ class TestControlNode(Framework):
         print("services: @@@")
         print(services)
 
-        self.assertFalse('nova-' in services)
         self.assertTrue('neutron-' in services)
         self.assertTrue('keystone-' in services)
 

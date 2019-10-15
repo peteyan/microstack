@@ -307,6 +307,19 @@ apps:
 #    plugs:
 #      - network
 
+  # Cluster
+  cluster-server:
+    command: flask run -p 10002 --host=0.0.0.0 # TODO: run as a uwsgi app
+    daemon: simple
+    environment:
+      LC_ALL: C.UTF-8  # Makes flask happy
+      LANG: C.UTF-8  # Makes flask happy
+      FLASK_APP: ${SNAP}/lib/python3.6/site-packages/cluster/daemon.py
+
+  join:
+    command: python3 ${SNAP}/lib/python3.6/site-packages/cluster/client.py
+
+
 parts:
   # Add Ubuntu Cloud Archive sources.
   # Allows us to fetch things such as updated libvirt.
@@ -828,3 +841,11 @@ parts:
     requirements:
       - requirements.txt
     source: tools/launch
+
+  # Clustering client and server
+  cluster:
+    plugin: python
+    python-version: python3
+    requirements:
+      - requirements.txt
+    source: tools/cluster

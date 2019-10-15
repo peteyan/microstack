@@ -14,10 +14,8 @@ Web IDE.
 
 """
 
-import json
 import os
 import sys
-import time
 import unittest
 import xvfbwrapper
 from selenium import webdriver
@@ -52,7 +50,7 @@ class TestBasics(Framework):
 
         """
         launch = '/snap/bin/microstack.launch'
-        openstack = '/snap/bin/microstack.openstack'
+        # openstack = '/snap/bin/microstack.openstack'
 
         print("Testing microstack.launch ...")
 
@@ -67,45 +65,6 @@ class TestBasics(Framework):
 
         # Endpoints should not contain localhost
         self.assertFalse("localhost" in endpoints)
-
-        # Verify that microstack.launch completed successfully
-
-        # Ping the instance
-        ip = None
-        servers = check_output(*self.PREFIX, openstack,
-                               'server', 'list', '--format', 'json')
-        servers = json.loads(servers)
-        for server in servers:
-            if server['Name'] == 'breakfast':
-                ip = server['Networks'].split(",")[1].strip()
-                break
-
-        self.assertTrue(ip)
-
-        pings = 1
-        max_pings = 600  # ~10 minutes!
-        while not call(*self.PREFIX, 'ping', '-c1', '-w1', ip):
-            pings += 1
-            if pings > max_pings:
-                self.assertFalse(True, msg='Max pings reached!')
-
-        print("Testing instances' ability to connect to the Internet")
-        # Test Internet connectivity
-        attempts = 1
-        max_attempts = 300  # ~10 minutes!
-        username = check_output(*self.PREFIX, 'whoami')
-
-        while not call(
-                *self.PREFIX,
-                'ssh',
-                '-oStrictHostKeyChecking=no',
-                '-i', '/home/{}/.ssh/id_microstack'.format(username),
-                'cirros@{}'.format(ip),
-                '--', 'ping', '-c1', '91.189.94.250'):
-            attempts += 1
-            if attempts > max_attempts:
-                self.assertFalse(True, msg='Unable to access the Internet!')
-            time.sleep(1)
 
         if 'multipass' in self.PREFIX:
             print("Opening {}:80 up to the outside world".format(

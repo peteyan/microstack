@@ -1,3 +1,4 @@
+netaddr
+netifaces
 pymysql
 wget
-inflection

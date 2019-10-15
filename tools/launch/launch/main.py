@@ -43,6 +43,12 @@ def parse_args():
                         help='Wait for server to become active before exiting')
     parser.add_argument('-r', '--retry', action='store_true',
                         help='Retry failed launch attempts')
+    # TODO: add a passthrough for other openstack 'server create'
+    # args. Manually specifying them here is a bit silly.  For now, we
+    # need to specify availability zone in some tests, so we add it
+    # here.
+    parser.add_argument('--availability-zone',
+                        help='passthrough to avail zone')
 
     args = parser.parse_args()
     return args
@@ -50,13 +56,18 @@ def parse_args():
 
 def create_server(name, args):
 
-    ret = check_output('openstack', 'server', 'create',
-                       '--flavor', args.flavor,
-                       '--image', args.image,
-                       '--nic', 'net-id={}'.format(args.net_id),
-                       '--key-name', args.key,
-                       name, '--format', 'json')
-    ret = json.loads(ret)
+    cmd = [
+        'openstack', 'server', 'create',
+        '--flavor', args.flavor,
+        '--image', args.image,
+        '--nic', 'net-id={}'.format(args.net_id),
+        '--key-name', args.key,
+        name, '--format', 'json'
+    ]
+    if args.availability_zone:
+        cmd += ['--availability-zone', args.availability_zone]
+
+    ret = json.loads(check_output(*cmd))
     return ret['id']
 
 
@@ -141,7 +152,7 @@ Server {} launched! (status is {})
 Access it with `ssh -i \
 $HOME/.ssh/id_microstack` <username>@{}""".format(name, status, ip))
 
-    gate = check_output('snapctl', 'get', 'questions.ext-gateway')
+    gate = check_output('snapctl', 'get', 'config.network.ext-gateway')
     print('You can also visit the OpenStack dashboard at http://{}'.format(
         gate))
 
