@@ -68,13 +68,16 @@ username: admin
 password: keystone
 ```
 
-## Booting and accessing an instance
+## Creating and accessing an instance
 
-`microstack` comes preconfigured with networking and images so you can get starting using OpenStack as soon as `microstack` is installed; to boot an instance:
+Create an instance in the usual way:
 
 ```
-microstack.openstack server create --flavor m1.small --nic net-id=test --image cirros my-microstack-server
+microstack.openstack server create --flavor m1.small --nic net-id=test --key-name microstack --image cirros my-microstack-server
 ```
+
+For convenience, we've used items that the initialisation step provided
+(flavor, network, keypair, and image). You are free to manage your own.
 
 To access the instance, you'll need to assign it a floating IP address:
 
@@ -83,7 +86,9 @@ ALLOCATED_FIP=`microstack.openstack floating ip create -f value -c floating_ip_a
 microstack.openstack server add floating ip my-microstack-server $ALLOCATED_FIP
 ```
 
-and as you would expect, `microstack` is just like a full OpenStack Cloud and does not allow ingress access to the instance by default, so next enable SSH and ping access to the instance:
+Since MicroStack is just like a normal OpenStack cloud you'll need to enable
+SSH and ICMP access to the instance (this may have been done by the
+initialisation step):
 
 ```
 SECGROUP_ID=`microstack.openstack security group list --project admin -f value -c ID`
@@ -91,10 +96,10 @@ microstack.openstack security group rule create $SECGROUP_ID --proto tcp --remot
 microstack.openstack security group rule create $SECGROUP_ID --proto icmp --remote-ip 0.0.0.0/0
 ```
 
-once this is complete you should be able to SSH to the instance:
+You should now be able to SSH to the instance:
 
 ```
-ssh cirros@$ALLOCATED_FIP
+ssh -i ~/.ssh/id_microstack cirros@$ALLOCATED_FIP
 ```
 
 Happy `microstack`ing!
