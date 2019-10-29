@@ -117,23 +117,6 @@ class TestBasics(Framework):
             # TODO: get rid of this, when we drop the ping tests back int.
             time.sleep(10)
 
-        if 'multipass' in self.PREFIX:
-            print("Opening {}:80 up to the outside world".format(
-                self.HORIZON_IP))
-
-            with open('/tmp/_10_hosts.py', 'w') as hosts:
-                hosts.write("""\
-# Allow all hosts to connect to this machine
-ALLOWED_HOSTS = ['*',]
-""")
-            check('multipass', 'copy-files', '/tmp/_10_hosts.py',
-                  '{}:/tmp/_10_hosts.py'.format(self.MACHINE))
-            check(
-                *self.PREFIX, 'sudo', 'cp', '/tmp/_10_hosts.py',
-                '/var/snap/microstack/common/etc/horizon/local_settings.d/'
-            )
-            check(*self.PREFIX, 'sudo', 'snap', 'restart', 'microstack')
-
         print('Verifying GUI for (IP: {})'.format(self.HORIZON_IP))
         # Verify that our GUI is working properly
         self.driver.get("http://{}/".format(self.HORIZON_IP))

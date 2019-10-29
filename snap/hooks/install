@@ -18,6 +18,7 @@ snapctl set \
         config.network.compute-ip=10.20.20.1 \
         config.network.ext-cidr=10.20.20.1/24 \
         config.network.security-rules=true \
+        config.network.dashboard-allowed-hosts="*" \
         ;
 
 # Passwords, certs, etc.
