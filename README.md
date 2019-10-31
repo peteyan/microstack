@@ -1,162 +1,86 @@
-# microstack
+# MicroStack
 
-[![Snap Status](https://build.snapcraft.io/badge/CanonicalLtd/microstack.svg)](https://build.snapcraft.io/user/CanonicalLtd/microstack)
+[![Snap Status][snap-build-badge]][snap-build-status]
 
-OpenStack in a snap that you can run locally on a single machine! Excellent for ...
+MicroStack is a single-machine, snap-deployed OpenStack cloud.
 
-* Development and Testing of Openstack Workloads
-* CI
-* Edge Clouds (experimental)
+Common purposes include:
 
-`microstack` currently provides Nova, Keystone, Glance, Horizon and Neutron OpenStack services.
+* Development and testing of OpenStack workloads
+* Continuous integration (CI)
+* IoT and appliances
+* Edge clouds (experimental)
+* Introducing new users to OpenStack
 
-If you want to roll up your sleeves and do interesting things with the services and settings, look in the .d directories in the filesystem tree under `/var/snap/microstack/common/etc`. You can add services with your package manager, or take a look at `CONTRIBUTING.md` and make a code based argument for adding a service to the default list. :-)
+Currently provided OpenStack services are: Nova, Keystone, Glance, Horizon, and
+Neutron.
 
+MicroStack is frequently updated to provide the latest stable updates of the
+most recent OpenStack release.
+
+> **Requirements**:
+  You will need at least 2 CPUs, 8 GiB of memory, and 100 GiB of disk space.
+
+See the full [MicroStack documentation][microstack-docs].
 
 ## Installation
 
-`microstack` is frequently updated to provide the latest stable updates of the most recent OpenStack release.  The quickest was to get started is to install directly from the snap store.  You can install `microstack` using:
+At this time you can install from the `--beta` or `--edge` snap channels:
 
-```
-sudo snap install microstack --classic --beta
-```
+    sudo snap install microstack --classic --beta
 
-## Quickstart
-To quickly configure networks and launch a vm, run
+## Initialisation
 
-`sudo microstack.init`
+Initialisation will set up databases, networks, flavors, an SSH keypair, a
+CirrOS image, and open ICMP/SSH security groups:
 
-This will configure various Openstack databases. Then run:
+    sudo microstack.init --auto
 
-`microstack.launch cirros --name test`.
+## OpenStack client
 
-This will launch an instance for you, and make it available to manage via the command line, or via the Horizon Dashboard.
+The OpenStack client is bundled as `microstack.openstack`. For example:
 
-To access the Dashboard, visit http://10.20.20.1 in a web browser, and login with the following credentials:
+    microstack.openstack network list
+    microstack.openstack flavor list
+    microstack.openstack keypair list
+    microstack.openstack image list
+    microstack.openstack security group rule list
 
-```
-username: admin
-password: keystone
-```
+## Creating an instance
 
-To ssh into the instance, use the username "cirros" and the ssh key written to ~/.ssh/id_microstack:
+To create an instance (called "awesome") based on the CirrOS image:
 
-`ssh -i ~/.ssh/id_microstack cirros@<IP>` (Where 'IP' is listed in the output of `microstack.launch`)
+    microstack.launch cirros --name awesome
 
-To run openstack commands, run `microstack.openstack <some command>`
+## SSH to an instance
 
-For more detail and control, read the rest of this README. :-)
+The launch output will show you how to connect to the instance. For the CirrOS
+image, the user account is 'cirros'.
 
-## Accessing OpenStack
+    ssh -i ~/.ssh/id_microstack cirros@<ip-address>
 
-`microstack` provides a pre-configured OpenStack CLI to access the local OpenStack deployment; its namespaced using the `microstack` prefix:
+## Horizon
 
-```
-microstack.openstack server list
-```
+The launch output will also provide information for the Horizon dashboard. Its
+credentials are:
 
-You can setup this command as an alias for `openstack` if you wish (removing the need for the `microstack.` prefix):
+    username: admin
+    password: keystone
 
-```
-sudo snap alias microstack.openstack openstack
-```
+## Customising and contributing
 
-Alternatively you can access the Horizon OpenStack dashboard on `http://127.0.0.1` with the following credentials:
+To customise services and settings, look in the `.d` directories under
+`/var/snap/microstack/common/etc`. You can add services with your package
+manager, or take a look at `CONTRIBUTING.md` and make a code based argument for
+adding a service to the default list.
 
-```
-username: admin
-password: keystone
-```
+## Reporting a bug
 
-## Creating and accessing an instance
+Please report bugs to the [MicroStack][microstack] project on Launchpad.
 
-Create an instance in the usual way:
+<!-- LINKS -->
 
-```
-microstack.openstack server create --flavor m1.small --nic net-id=test --key-name microstack --image cirros my-microstack-server
-```
-
-For convenience, we've used items that the initialisation step provided
-(flavor, network, keypair, and image). You are free to manage your own.
-
-To access the instance, you'll need to assign it a floating IP address:
-
-```
-ALLOCATED_FIP=`microstack.openstack floating ip create -f value -c floating_ip_address external`
-microstack.openstack server add floating ip my-microstack-server $ALLOCATED_FIP
-```
-
-Since MicroStack is just like a normal OpenStack cloud you'll need to enable
-SSH and ICMP access to the instance (this may have been done by the
-initialisation step):
-
-```
-SECGROUP_ID=`microstack.openstack security group list --project admin -f value -c ID`
-microstack.openstack security group rule create $SECGROUP_ID --proto tcp --remote-ip 0.0.0.0/0 --dst-port 22
-microstack.openstack security group rule create $SECGROUP_ID --proto icmp --remote-ip 0.0.0.0/0
-```
-
-You should now be able to SSH to the instance:
-
-```
-ssh -i ~/.ssh/id_microstack cirros@$ALLOCATED_FIP
-```
-
-Happy `microstack`ing!
-
-## Stopping and starting microstack
-
-You may wish to temporarily shutdown microstack when not in use without un-installing it.
-
-`microstack` can be shutdown using:
-
-```
-sudo snap disable microstack
-```
-
-and re-enabled latest using:
-
-```
-sudo snap enable microstack
-```
-
-## Raising a Bug
-
-Please report bugs to the microstack project on launchpad: https://bugs.launchpad.net/microstack
-
-## Clustering Preview
-
-The latests --edge version of the clustering snap contains a preview of microstack's clustering functionality. If you're interested in building a small "edge" cloud with microstack, please take a look at the notes below. Keep in mind that this is preview functionality. Interfaces may not be stable, and the security of the preview is light, and not suitable for production use!
-
-To setup a cluster, you first must setup a control node. Do so with the following commands:
-
-```
-sudo snap install microstack
-sudo microstack.init
-```
-
-Answer the questions in the interactive prompt as follows:
-
-```
-Clustering: yes
-Role: control
-IP Address: Note and accept the default
-```
-
-On a second machine, run:
-
-```
-sudo snap install microstack
-sudo microstack.init
-```
-
-Answer the questions in the interactive prompt as follows:
-
-```
-Setup clustering: yes
-Role: compute
-Control IP: the ip address noted above
-Compute IP: accept the default
-```
-
-You should now have a small, two node cloud, with the first node serving as both the control plane and a hypvervisor, and the second node serving as a hypervisor. You can create vms on both.
+[microstack-docs]: https://microstack.run/docs/
+[snap-build-badge]: https://build.snapcraft.io/badge/CanonicalLtd/microstack.svg
+[snap-build-status]: https://build.snapcraft.io/user/CanonicalLtd/microstack
+[microstack]: https://bugs.launchpad.net/microstack
