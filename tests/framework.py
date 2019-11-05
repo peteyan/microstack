@@ -72,10 +72,11 @@ class Framework(unittest.TestCase):
 
         self.MACHINE = petname.generate()
         self.PREFIX = ['multipass', 'exec', self.MACHINE, '--']
+        distro = os.environ.get('DISTRO') or self.DISTRO
 
         check('sudo', 'snap', 'install', '--classic', '--edge', 'multipass')
 
-        check('multipass', 'launch', '--cpus', '2', '--mem', '8G', self.DISTRO,
+        check('multipass', 'launch', '--cpus', '2', '--mem', '8G', distro,
               '--name', self.MACHINE)
         check('multipass', 'copy-files', self.SNAP, '{}:'.format(self.MACHINE))
 
