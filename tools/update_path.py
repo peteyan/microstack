@@ -17,30 +17,20 @@ import os
 import shutil
 import sys
 
+
 LD_LIBRARY_PATH = (
     '$SNAP/lib',
     '$SNAP/lib/$SNAPCRAFT_ARCH_TRIPLET',
     '$SNAP/usr/lib',
     '$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET',
-    '$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio',
-#    '/snap/core18/current/lib',
-#    '/snap/core18/current/lib/$SNAPCRAFT_ARCH_TRIPLET',
-#    '/snap/core18/current/lib/systemd',
-#    '/snap/core18/current/usr/lib',
-#    '/snap/core18/current/var/lib',
-#    '/snap/core18/current/usr/lib/$SNAPCRAFT_ARCH_TRIPLET',
-)
+    '$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio',)
 PATH = (
     '$SNAP/usr/sbin',
     '$SNAP/usr/bin',
     '$SNAP/sbin',
     '$SNAP/bin',
-#    '/snap/core18/current/bin',
-#    '/snap/core18/current/usr/sbin',
-#    '/snap/core18/current/usr/bin',
-#    '/snap/core18/current/sbin',
-    '$PATH'
-)
+    '$PATH')
+
 
 def main():
     """Replace PATH and LD_LIBRARY_PATH with lists above.
@@ -80,6 +70,7 @@ def main():
 
     print('File updated! Please manually inspect the changes '
           'and commit them via git.')
+
 
 if __name__ == '__main__':
     main()

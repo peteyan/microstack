@@ -7,8 +7,7 @@ import mock
 # TODO: drop in test runner and get rid of this line.
 sys.path.append(os.getcwd())  # noqa
 
-from init.questions.question import (Question, InvalidQuestion, InvalidAnswer,
-                                     AnswerNotImplemented)
+from init.questions.question import (Question, InvalidQuestion, InvalidAnswer)
 
 
 ##############################################################################
