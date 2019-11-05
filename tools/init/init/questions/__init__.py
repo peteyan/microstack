@@ -291,12 +291,10 @@ class RabbitMq(Question):
 
         (actions may have already been run, in which case we fail silently).
         """
-        # Add Erlang HOME to env.
-        env = dict(**_env)
-        env['HOME'] = '{SNAP_COMMON}/lib/rabbitmq'.format(**_env)
         # Configure RabbitMQ
-        call('rabbitmqctl', 'add_user', 'openstack', 'rabbitmq', env=env)
-        shell('rabbitmqctl set_permissions openstack ".*" ".*" ".*"', env=env)
+        call('microstack.rabbitmqctl', 'add_user', 'openstack', 'rabbitmq')
+        shell(
+            'microstack.rabbitmqctl set_permissions openstack ".*" ".*" ".*"')
 
     def yes(self, answer: str) -> None:
         log.info('Waiting for RabbitMQ to start ...')
@@ -692,20 +690,18 @@ class KeyPair(Question):
     def yes(self, answer: str) -> None:
 
         if 'microstack' not in check_output('openstack', 'keypair', 'list'):
+            user = check_output('logname')
+            home = '/home/{}'.format(user)  # TODO make more portable!
+
             log.info('Creating microstack keypair (~/.ssh/{})'.format(answer))
-            check('mkdir', '-p', '{HOME}/.ssh'.format(**_env))
-            check('chmod', '700', '{HOME}/.ssh'.format(**_env))
+            check('mkdir', '-p', '{home}/.ssh'.format(home=home))
+            check('chmod', '700', '{home}/.ssh'.format(home=home))
             id_ = check_output('openstack', 'keypair', 'create', 'microstack')
-            id_path = '{HOME}/.ssh/{answer}'.format(
-                HOME=_env['HOME'],
-                answer=answer
-            )
+            id_path = '{home}/.ssh/{answer}'.format(home=home, answer=answer)
 
             with open(id_path, 'w') as file_:
                 file_.write(id_)
             check('chmod', '600', id_path)
-            # TODO: too many assumptions in the below. Make it portable!
-            user = _env['HOME'].split("/")[2]
             check('chown', '{}:{}'.format(user, user), id_path)
 
 

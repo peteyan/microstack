@@ -30,6 +30,7 @@ from typing import Dict, List
 import netaddr
 import netifaces
 import pymysql
+import socket
 import wget
 
 from init.config import Env, log
@@ -107,16 +108,12 @@ def shell(cmd: str, env: Dict = _env) -> int:
     """
     proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, bufsize=1,
-                            universal_newlines=True, shell=True,
-                            executable='/snap/core18/current/bin/bash')
+                            universal_newlines=True, shell=True)
     for line in iter(proc.stdout.readline, ''):
         log.debug(line)
     proc.wait()
     if proc.returncode:
-        raise subprocess.CalledProcessError(
-            "Command '{}' returned non-zero exit status {}".format(
-                cmd,
-                proc.returncode))
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
     return proc.returncode
 
 
@@ -141,7 +138,8 @@ def sql(cmd: str) -> None:
 def nc_wait(addr: str, port: str) -> None:
     """Wait for a service to be answering on a port."""
     print('Waiting for {}:{}'.format(addr, port))
-    while not call('nc', '-z', addr, port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    while sock.connect_ex((addr, int(port))) != 0:
         sleep(1)
 
 
