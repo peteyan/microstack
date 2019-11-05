@@ -2,7 +2,7 @@
 # to define this template. Be sure to update "listen" with the port number and
 # also update "api-name" for the socket.
 server {
-    listen 80;
+    listen {{ dashboard_port }};
     error_log syslog:server=unix:/dev/log;
     access_log syslog:server=unix:/dev/log;
     location / {

@@ -16,4 +16,18 @@ if [ -z "$(snapctl get config)" ]; then
     mkdir -p ${SNAP_COMMON}/etc/horizon/local_settings.d
 fi
 
+# Add default ports for mysql, rabbit and dashboard services.
+# [2019-11-21] build 171 (beta) -> master
+if [ -z "$(snapctl get config.network.ports.dashboard)" ]; then
+        snapctl set config.network.ports.dashboard=80
+fi
+
+if [ -z "$(snapctl get config.network.ports.mysql)" ]; then
+        snapctl set config.network.ports.mysql=3306
+fi
+
+if [ -z "$(snapctl get config.network.ports.rabbit)" ]; then
+        snapctl set config.network.ports.rabbit=5672
+fi
+
 snap-openstack setup  # Write any template changes.

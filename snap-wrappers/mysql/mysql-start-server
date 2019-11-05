@@ -17,12 +17,16 @@
 set -e
 
 init_config() {
+  # Write out config.
+  # Include 'client' section for pymysql client.
+  # TODO: is [mysql] section necessary?
   mkdir -p "${CONFDIR}"
   echo "Generating config file in ${CONFFILE}..."
   cat > ${CONFFILE} <<EOF
 [mysqld]
 pid-file=${RUNDIR}/mysqld.pid
 socket=${RUNDIR}/mysqld.sock
+port=${PORT}
 datadir=${DATADIR}
 log-error=${LOGDIR}/error.log
 secure-file-priv=${FILESDIR}
@@ -30,9 +34,15 @@ basedir=${BASEDIR}
 
 [mysql]
 socket=${RUNDIR}/mysqld.sock
+port=${PORT}
+
+[client]
+socket=${RUNDIR}/mysqld.sock
+port=${PORT}
 
 [mysql_upgrade]
 socket=${RUNDIR}/mysqld.sock
+port=${PORT}
 EOF
 }
 
@@ -57,6 +67,7 @@ CONFDIR="${MYSQL_SNAPDIR}/etc/mysql"
 CONFFILE="${CONFDIR}/my.cnf"
 FILESDIR="${MYSQL_SNAPDIR}/lib/mysql-files"
 BASEDIR="${SNAP}/usr"
+PORT=$(snapctl get config.network.ports.mysql)
 
 [ -d "${LOGDIR}" ] || mkdir -p ${LOGDIR}
 [ -f "${LOGDIR}/error.log" ] || touch ${LOGDIR}/error.log

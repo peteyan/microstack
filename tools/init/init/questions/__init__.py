@@ -267,7 +267,9 @@ class RabbitMq(Question):
     config_key = 'config.services.control-plane'
 
     def _wait(self) -> None:
-        nc_wait(_env['control_ip'], '5672')
+        rabbit_port = check_output(
+            'snapctl', 'get', 'config.network.ports.rabbit')
+        nc_wait(_env['control_ip'], rabbit_port)
         log_file = '{SNAP_COMMON}/log/rabbitmq/startup_log'.format(**_env)
         log_wait(log_file, 'completed')
 
@@ -301,7 +303,9 @@ class DatabaseSetup(Question):
     config_key = 'config.services.control-plane'
 
     def _wait(self) -> None:
-        nc_wait(_env['control_ip'], '3306')
+        mysql_port = check_output(
+            'snapctl', 'get', 'config.network.ports.mysql')
+        nc_wait(_env['control_ip'], mysql_port)
         log_wait('{SNAP_COMMON}/log/mysql/error.log'.format(**_env),
                  'mysqld: ready for connections.')
 

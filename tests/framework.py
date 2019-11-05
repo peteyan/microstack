@@ -224,7 +224,13 @@ class Framework(unittest.TestCase):
         # Test
         print('Verifying GUI for (IP: {})'.format(host.horizon_ip))
         # Verify that our GUI is working properly
-        self.driver.get("http://{}/".format(host.horizon_ip))
+        dashboard_port = check_output(*host.prefix, 'sudo', 'snap', 'get',
+                                      'microstack',
+                                      'config.network.ports.dashboard')
+        self.driver.get("http://{}:{}/".format(
+            host.horizon_ip,
+            dashboard_port
+        ))
         # Login to horizon!
         self.driver.find_element(By.ID, "id_username").click()
         self.driver.find_element(By.ID, "id_username").send_keys("admin")

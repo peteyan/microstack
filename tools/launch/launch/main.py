@@ -146,15 +146,29 @@ def launch(name, args):
                       '-c', 'floating_ip_address', 'external')
     check('openstack', 'server', 'add', 'floating', 'ip', server_id, ip)
 
+    username = '<username>'
+    if args.flavor:
+        # Try to guess at a username.
+        # TODO: make this more sophisticated.
+        if 'fedora' in args.flavor.lower():
+            username = 'fedora'
+        if 'ubuntu' in args.flavor.lower():
+            username = 'ubuntu'
+        if 'cirros' in args.flavor.lower():
+            username = 'cirros'
+
     print("""\
-Server {} launched! (status is {})
+Server {name} launched! (status is {status})
 
 Access it with `ssh -i \
-$HOME/.ssh/id_microstack` <username>@{}""".format(name, status, ip))
+$HOME/.ssh/id_microstack` {username}@{ip}""".format(name=name, status=status,
+                                                    username=username, ip=ip))
 
     gate = check_output('snapctl', 'get', 'config.network.ext-gateway')
-    print('You can also visit the OpenStack dashboard at http://{}'.format(
-        gate))
+    port = check_output('snapctl', 'get', 'config.network.ports.dashboard')
+
+    print('You can also visit the OpenStack dashboard at http://{}:{}'.format(
+        gate, port))
 
 
 def main():

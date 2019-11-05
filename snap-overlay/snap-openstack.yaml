@@ -17,6 +17,7 @@ setup:
     - "{snap_common}/etc/cinder/uwsgi/snap"
     - "{snap_common}/etc/nova/uwsgi/snap"
     - "{snap_common}/etc/horizon/uwsgi/snap"
+    - "{snap_common}/etc/rabbitmq"
     - "{snap_common}/fernet-keys"
     - "{snap_common}/lib"
     - "{snap_common}/lib/images"
@@ -53,6 +54,7 @@ setup:
     neutron.nova.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/nova.conf"
     neutron.database.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/database.conf"
     neutron.conf.d.rabbitmq.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/rabbitmq.conf"
+    rabbitmq.conf.j2: "{snap_common}/etc/rabbitmq/rabbitmq.config"
 
   chmod:
     "{snap_common}/instances": 0755
@@ -69,6 +71,9 @@ setup:
     extcidr: 'config.network.ext-cidr'
     dns: 'config.network.dns'
     dashboard_allowed_hosts: 'config.network.dashboard-allowed-hosts'
+    dashboard_port: 'config.network.ports.dashboard'
+    mysql_port: 'config.network.ports.mysql'
+    rabbit_port: 'config.network.ports.rabbit'
 entry_points:
   keystone-manage:
     binary: "{snap}/bin/keystone-manage"

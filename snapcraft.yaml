@@ -778,11 +778,11 @@ parts:
       rm -f $SNAPCRAFT_PART_INSTALL/usr/bin/erl
       rm -f $SNAPCRAFT_PART_INSTALL/usr/lib/rabbitmq/bin/rabbitmq-script-wrapper
       # NOTE(jamespage): The versioned path below is brittle.
-      rm -f $SNAPCRAFT_PART_INSTALL/usr/lib/rabbitmq/lib/rabbitmq_server-3.5.7/sbin/rabbitmq-defaults
+      rm -f $SNAPCRAFT_PART_INSTALL/usr/lib/rabbitmq/lib/rabbitmq_server-3.6.10/sbin/rabbitmq-defaults
       snapcraftctl build
     organize:
       rabbitmq-script-wrapper: usr/lib/rabbitmq/bin/rabbitmq-script-wrapper
-      rabbitmq-defaults: usr/lib/rabbitmq/lib/rabbitmq_server-3.5.7/sbin/rabbitmq-defaults
+      rabbitmq-defaults: usr/lib/rabbitmq/lib/rabbitmq_server-3.6.10/sbin/rabbitmq-defaults
       erl: usr/bin/erl
 
   # Memcached Token Caching

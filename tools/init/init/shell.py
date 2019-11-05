@@ -127,9 +127,8 @@ def sql(cmd: str) -> None:
     :param cmd: sql to execute.
 
     """
-    mysql_conf = '${SNAP_USER_COMMON}/etc/mysql/my.cnf'.format(**_env)
-    connection = pymysql.connect(host='localhost', user='root',
-                                 read_default_file=mysql_conf)
+    mysql_conf = '{SNAP_COMMON}/etc/mysql/my.cnf'.format(**_env)
+    connection = pymysql.connect(read_default_file=mysql_conf)
 
     with connection.cursor() as cursor:
         cursor.execute(cmd)
