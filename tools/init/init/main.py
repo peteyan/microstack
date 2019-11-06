@@ -103,6 +103,7 @@ def main() -> None:
         # The following are not yet implemented:
         # questions.VmSwappiness(),
         # questions.FileHandleLimits(),
+        questions.DashboardAccess(),
         questions.RabbitMq(),
         questions.DatabaseSetup(),
         questions.NovaHypervisor(),
