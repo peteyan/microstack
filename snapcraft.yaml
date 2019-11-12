@@ -209,7 +209,7 @@ apps:
 #      - network
 
   external-bridge:
-    command: bin/setup-br-ex
+    command: wait-on-init setup-br-ex
     daemon: oneshot
     passthrough:
       after: [ovs-vswitchd]
@@ -418,6 +418,12 @@ parts:
       - openstack-projects
     organize:
       openstack-wrapper: bin/openstack-wrapper
+
+  init-wrapper:
+    source: ./snap-wrappers/init
+    plugin: dump
+    organize:
+      wait-on-init: bin/wait-on-init
 
   nova-config:
     after: [openstack-projects]

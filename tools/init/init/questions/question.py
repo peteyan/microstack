@@ -74,7 +74,7 @@ class Question():
             raise InvalidQuestion(
                 'Invalid type {} specified'.format(self._type))
 
-        if self.config_key is None:
+        if self.config_key is None and self._type != 'auto':
             raise InvalidQuestion(
                 "No config key specified. "
                 "We don't know how to load or save this question!")
@@ -118,6 +118,9 @@ class Question():
         operator specified settings during updates.
 
         """
+        if self._type == 'auto':
+            return
+
         answer = shell.check_output(
             'snapctl', 'get', '{key}'.format(key=self.config_key)
         )
@@ -144,6 +147,9 @@ class Question():
         # By this time in the process 'yes' or 'no' answers will have
         # been converted to booleans. Convert them to a lowercase
         # 'true' or 'false' string for storage in the snapctl config.
+        if self._type == 'auto':
+            return
+
         if self._type == 'boolean':
             answer = str(answer).lower()
 

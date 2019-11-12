@@ -95,10 +95,8 @@ def main() -> None:
     question_list = [
         questions.Clustering(),
         questions.Dns(),
-        questions.ExtGateway(),
-        questions.ExtCidr(),
+        questions.NetworkSettings(),
         questions.OsPassword(),  # TODO: turn this off if COMPUTE.
-        questions.IpForwarding(),
         questions.ForceQemu(),
         # The following are not yet implemented:
         # questions.VmSwappiness(),

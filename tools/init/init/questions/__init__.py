@@ -31,7 +31,7 @@ from init.shell import (check, call, check_output, shell, sql, nc_wait,
                         log_wait, restart, download)
 from init.config import Env, log
 from init.questions.question import Question
-from init.questions import clustering
+from init.questions import clustering, network
 
 
 _env = Env().get_env()
@@ -128,6 +128,7 @@ class ConfigQuestion(Question):
         """
         check('snap-openstack', 'setup')
 
+        # TODO: get rid of this? (I think that it has become redundant)
         mstackrc = '{SNAP_COMMON}/etc/microstack.rc'.format(**_env)
         with open(mstackrc, 'r') as rc_file:
             for line in rc_file.readlines():
@@ -165,37 +166,24 @@ dnsmasq_dns_servers = {answer}
         # started. Need to figure that out.
 
 
-class ExtGateway(ConfigQuestion):
-    """Possibly override default ext gateway."""
-
-    _type = 'string'
-    _question = 'External Gateway'
-    config_key = 'config.network.ext-gateway'
+class NetworkSettings(Question):
+    """Write network settings, and """
+    _type = 'auto'
+    _question = 'Network settings'
 
     def yes(self, answer):
-        clustered = check_output('snapctl', 'get', 'config.clustered')
-        if clustered.lower() != 'true':
-            check('snapctl', 'set', 'config.network.control-ip={}'.format(
-                answer))
-            check('snapctl', 'set', 'config.network.compute-ip={}'.format(
-                answer))
-            _env['control_ip'] = _env['compute_ip'] = answer
-        else:
-            _env['control_ip'] = check_output('snapctl', 'get',
-                                              'config.network.control-ip')
-            _env['compute_ip'] = check_output('snapctl', 'get',
-                                              'config.network.compute-ip')
+        log.info('Configuring networking ...')
 
+        network.ExtGateway().ask()
+        network.ExtCidr().ask()
 
-class ExtCidr(ConfigQuestion):
-    """Possibly override the cidr."""
+        # Now that we have default or overriden values, setup the
+        # bridge and write all the proper values into our config
+        # files.
+        check('setup-br-ex')
+        check('snap-openstack', 'setup')
 
-    _type = 'string'
-    _question = 'External Ip Range'
-    config_key = 'config.network.ext-cidr'
-
-    def yes(self, answer):
-        _env['extcidr'] = answer
+        network.IpForwarding().ask()
 
 
 class OsPassword(ConfigQuestion):
@@ -207,20 +195,6 @@ class OsPassword(ConfigQuestion):
         _env['ospassword'] = answer
 
     # TODO obfuscate the password!
-
-
-class IpForwarding(Question):
-    """Possibly setup IP forwarding."""
-
-    _type = 'boolean'  # Auto for now, to maintain old behavior.
-    _question = 'Do you wish to setup ip forwarding? (recommended)'
-    config_key = 'config.host.ip-forwarding'
-
-    def yes(self, answer: str) -> None:
-        """Use sysctl to setup ip forwarding."""
-        log.info('Setting up ipv4 forwarding...')
-
-        check('sysctl', 'net.ipv4.ip_forward=1')
 
 
 class ForceQemu(Question):
