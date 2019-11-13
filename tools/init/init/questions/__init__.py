@@ -780,3 +780,80 @@ class PostSetup(Question):
 
         check('snapctl', 'set', 'initialized=true')
         log.info('Complete. Marked microstack as initialized!')
+
+
+class SimpleServiceQuestion(Question):
+
+    def yes(self, answer: str) -> None:
+        log.info('enabling and starting ' + self.__class__.__name__)
+
+        for service in self.services:
+            check('snapctl', 'start', '--enable', service)
+
+        log.info(self.__class__.__name__ + ' enabled')
+
+    def no(self, answer):
+        for service in self.services:
+            check('snapctl', 'stop', '--disable', service)
+
+
+class ExtraServicesQuestion(Question):
+
+    _type = 'boolean'
+    _question = 'Do you want to setup extra services?'
+    config_key = 'config.services.extra.enabled'
+    interactive = True
+
+    def yes(self, answer: bool):
+        questions = [
+            Filebeat(),
+            Telegraf(),
+            Nrpe(),
+        ]
+
+        for question in questions:
+            if not self.interactive:
+                question.interactive = False
+            question.ask()
+
+    def no(self, answer: bool):
+        pass
+
+
+class Filebeat(SimpleServiceQuestion):
+    _type = 'boolean'
+    _question = 'Do you want to enable Filebeat?'
+    config_key = 'config.services.extra.filebeat'
+    interactive = True
+
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.filebeat'.format(**_env)
+        ]
+
+
+class Telegraf(SimpleServiceQuestion):
+    _type = 'boolean'
+    _question = 'Do you want to enable Telegraf?'
+    config_key = 'config.services.extra.telegraf'
+    interactive = True
+
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.telegraf'.format(**_env)
+        ]
+
+
+class Nrpe(SimpleServiceQuestion):
+    _type = 'boolean'
+    _question = 'Do you want to enable NRPE?'
+    config_key = 'config.services.extra.nrpe'
+    interactive = True
+
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.nrpe'.format(**_env)
+        ]

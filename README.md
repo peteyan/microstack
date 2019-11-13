@@ -84,6 +84,10 @@ for example, run:
 
     sudo microstack.remove --auto --purge
 
+## LMA stack
+
+Filebeat, Telegraf and NRPE are bundled as the snap systemd services.
+
 ## Customising and contributing
 
 To customise services and settings, look in the `.d` directories under

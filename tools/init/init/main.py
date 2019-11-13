@@ -127,6 +127,7 @@ def init() -> None:
         questions.KeyPair(),
         questions.SecurityRules(),
         questions.PostSetup(),
+        questions.ExtraServicesQuestion(),
     ]
 
     for question in question_list:

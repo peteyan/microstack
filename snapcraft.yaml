@@ -367,6 +367,19 @@ apps:
   ovs-alternatives:
       command: bin/ovs-alternatives
 
+  filebeat:
+    # this is to avoid conflict with filebeat package
+    command: bin/filebeat
+    daemon: simple
+
+  nrpe:
+    command: bin/nrpe
+    daemon: simple
+
+  telegraf:
+    command: bin/telegraf
+    daemon: simple
+
 parts:
   dpdk:
     plugin: make
@@ -969,3 +982,62 @@ parts:
     requirements:
       - requirements.txt
     source: tools/cluster
+
+  ### LMA stack ###
+  filebeat:
+    plugin: dump
+    source: ./snap-wrappers/filebeat
+    after: [ lma-build-prep, qemu, libvirt ]
+    stage-packages: [ filebeat ]
+    organize:
+      filebeat: bin/filebeat
+
+  nrpe:
+    plugin: dump
+    source: ./snap-wrappers/nrpe
+    organize:
+      nrpe: bin/nrpe
+    after: [ lma-build-prep ]
+    stage-packages: [ nagios-nrpe-server, nagios-nrpe-plugin, monitoring-plugins, monitoring-plugins-basic, monitoring-plugins-common ]
+
+  telegraf:
+    plugin: dump
+    source: ./snap-wrappers/telegraf
+    organize:
+      telegraf: bin/telegraf
+    # we use autotools plugin here because it brings git, make
+    # otherwise we'd have to add respective packages
+    after: [ lma-build-prep, qemu, libvirt ]
+    # See https://forum.snapcraft.io/t/patchelf-broke-my-binary/4928
+    # and https://bugs.launchpad.net/snapcraft/+bug/1753995
+    build-attributes: [no-patchelf]
+    stage-packages: [ telegraf, iproute2, bridge-utils, ethtool, fancontrol, libatm1, ipmitool, freeipmi-tools ]
+
+  lma-build-prep:
+    plugin: nil
+    source: ""
+    override-build: |
+      cat ../../../project/filebeat.pgp.key | apt-key add -
+      cat ../../../project/telegraf.pgp.key | apt-key add -
+      apt-get install apt-transport-https
+      echo 'deb https://artifacts.elastic.co/packages/5.x/apt stable main' > /etc/apt/sources.list.d/elastic-5.x.list
+      echo 'deb http://ppa.launchpad.net/telegraf-devs/ppa/ubuntu bionic main' > /etc/apt/sources.list.d/telegraf.x.list
+      # this needs to be re-worked in order to be built in-place
+      echo 'deb http://ppa.launchpad.net/nikolay.vinogradov/nrpe-root/ubuntu bionic main' > /etc/apt/sources.list.d/nrpe-root.list
+      sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F767C80E0FC5C835
+      apt-get update --allow-unauthenticated
+
+  #lma-configs:
+  #  plugin: dump
+  #  source: ./lma
+  #  after: [ lma-build-prep ]
+  #  organize:
+  #    'config/nrpe': etc/nrpe
+  #    'config/telegraf': etc/telegraf
+
+
+  checks:
+    plugin: dump
+    source: ./checks
+    organize:
+      check_systemd.py: usr/lib/nagios/plugins/check_systemd.py

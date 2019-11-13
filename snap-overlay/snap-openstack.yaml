@@ -56,6 +56,10 @@ setup:
     neutron.conf.d.rabbitmq.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/rabbitmq.conf"
     rabbitmq.conf.j2: "{snap_common}/etc/rabbitmq/rabbitmq.config"
 
+    # LMA stack templates
+    telegraf.conf.j2: "{snap_common}/etc/telegraf/telegraf-microstack.conf"
+    nrpe.cfg.j2: "{snap_common}/etc/nrpe/nrpe-microstack.cfg"
+    filebeat.yaml.j2: "{snap_common}/etc/filebeat/filebeat-microstack.yaml"
   chmod:
     "{snap_common}/instances": 0755
     "{snap_common}/etc/microstack.rc": 0644
@@ -74,6 +78,11 @@ setup:
     dashboard_port: 'config.network.ports.dashboard'
     mysql_port: 'config.network.ports.mysql'
     rabbit_port: 'config.network.ports.rabbit'
+    logging_tag: 'config.logging.logging.tag'
+    logging_host: 'config.logging.host'
+    monitoring_tag: 'config.monitoring.tag'
+    monitoring_ipmi: 'config.monitoring.ipmi'
+    alerting_tag: 'config.alerting.tag'
 entry_points:
   keystone-manage:
     binary: "{snap}/bin/keystone-manage"
@@ -312,3 +321,24 @@ entry_points:
       - "{snap_common}/etc/horizon/horizon.conf.d"
     templates:
       horizon.ini.j2: "{snap_common}/etc/horizon/uwsgi/snap/horizon.ini"
+  filebeat:
+    binary: "{snap}/bin/filebeat.sh"
+    type: simple
+    config-dirs:
+      - "{snap_common}/lma/filebeat"
+    templates:
+      filebeat.yml.j2: "{snap_common}/etc/filebeat/filebeat.yml"
+  nrpe:
+    binary: "{snap}/bin/nrpe.sh"
+    type: simple
+    config-dirs:
+      - "{snap_common}/lma/nrpe"
+    templates:
+      nrpe.conf.j2: "{snap_common}/etc/nrpe/nrpe.conf"
+  telegraf:
+    binary: "{snap}/bin/telegraf"
+    type: simple
+    config-dirs:
+      - "{snap_common}/lma/telegraf"
+    templates:
+      telegraf.conf.j2: "{snap_common}/etc/telegraf/telegraf.conf"

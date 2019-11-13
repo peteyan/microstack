@@ -59,3 +59,33 @@ snapctl set \
         config.cleanup.delete-bridge=true \
         config.cleanup.remove=true \
         ;
+
+# Filebeat
+snapctl set \
+    config.logging.datatag="" \
+    config.logging.host="localhost:5044" \
+    config.logging.custom-config="$SNAP_COMMON/etc/filebeat/filebeat-microstack.yaml" \
+    config.services.extra.enabled=false \
+    config.services.extra.filebeat=false \
+    ;
+
+# services won't start if disabled in install hook
+# see https://github.com/snapcore/snapd/blob/53dd10a71d1754610eda2d3d776465b81b3281cd/wrappers/services.go#L139
+snapctl stop --disable ${SNAP_NAME}.filebeat
+
+# NRPE
+snapctl set \
+    config.alerting.custom-config="$SNAP_COMMON/etc/nrpe/nrpe-microstack.cfg" \
+    config.services.extra.nrpe=false \
+    ;
+
+snapctl stop --disable ${SNAP_NAME}.telegraf
+
+# Telegraf
+snapctl set \
+    config.monitoring.ipmi="" \
+    config.monitoring.custom-config="$SNAP_COMMON/etc/telegraf/telegraf-microstack.conf" \
+    config.services.extra.telegraf=false \
+    ;
+
+snapctl stop --disable ${SNAP_NAME}.nrpe
