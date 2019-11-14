@@ -2,12 +2,7 @@
 """
 control_test.py
 
-This is a test to verify that a control node gets setup properly. We verify:
-
-1) We can install the snap.
-2) Nova services are not running
-3) Other essential services are running
-4) TODO: the horizon dashboard works.
+This is a test to verify that a control node gets setup properly.
 
 """
 
@@ -23,17 +18,19 @@ from tests.framework import Framework, check, check_output  # noqa E402
 
 class TestControlNode(Framework):
 
-    INIT_FLAG = 'control'
-
     def test_control_node(self):
         """A control node has all services running, so this shouldn't be any
         different than our standard setup.
 
         """
 
+        host = self.get_host()
+        host.install()
+        host.init(flag='control')
+
         print("Checking output of services ...")
         services = check_output(
-            *self.PREFIX, 'systemctl', 'status', 'snap.microstack.*',
+            *host.prefix, 'systemctl', 'status', 'snap.microstack.*',
             '--no-page')
 
         print("services: @@@")
@@ -41,6 +38,7 @@ class TestControlNode(Framework):
 
         self.assertTrue('neutron-' in services)
         self.assertTrue('keystone-' in services)
+        self.assertTrue('nova-' in services)
 
         self.passed = True
 

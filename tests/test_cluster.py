@@ -12,7 +12,6 @@ vms.
 
 import json
 import os
-import petname
 import sys
 import unittest
 
@@ -26,27 +25,6 @@ os.environ['MULTIPASS'] = 'true'  # TODO better way to do this.
 
 class TestCluster(Framework):
 
-    INIT_FLAG = 'control'
-
-    def _compute_node(self, channel='dangerous'):
-        """Make a compute node.
-
-        TODO: refactor framework so that we can fold a lot of this
-        into the parent framework. There's a lot of dupe code here.
-
-        """
-        machine = petname.generate()
-        prefix = ['multipass', 'exec', machine, '--']
-
-        check('multipass', 'launch', '--cpus', '2', '--mem', '8G',
-              self.DISTRO, '--name', machine)
-
-        check('multipass', 'copy-files', self.SNAP, '{}:'.format(machine))
-        check(*prefix, 'sudo', 'snap', 'install', '--classic',
-              '--{}'.format(channel), self.SNAP)
-
-        return machine, prefix
-
     def test_cluster(self):
 
         # After the setUp step, we should have a control node running
@@ -54,18 +32,26 @@ class TestCluster(Framework):
         # address.
 
         openstack = '/snap/bin/microstack.openstack'
+        control_host = self.get_host()
+        control_host.install()
+        control_host.init(flag='control')
 
-        cluster_password = check_output(*self.PREFIX, 'sudo', 'snap',
+        control_prefix = control_host.prefix
+        cluster_password = check_output(*control_prefix, 'sudo', 'snap',
                                         'get', 'microstack',
                                         'config.cluster.password')
-        control_ip = check_output(*self.PREFIX, 'sudo', 'snap',
+        control_ip = check_output(*control_prefix, 'sudo', 'snap',
                                   'get', 'microstack',
                                   'config.network.control-ip')
 
         self.assertTrue(cluster_password)
         self.assertTrue(control_ip)
 
-        compute_machine, compute_prefix = self._compute_node()
+        compute_host = self.add_host()
+        compute_host.install()
+
+        compute_machine = compute_host.machine
+        compute_prefix = compute_host.prefix
 
         # TODO add the following to args for init
         check(*compute_prefix, 'sudo', 'snap', 'set', 'microstack',
@@ -110,7 +96,7 @@ class TestCluster(Framework):
         max_pings = 60  # ~1 minutes
         # Ping the machine from the control node (we don't have
         # networking wired up for the other nodes).
-        while not call(*self.PREFIX, 'ping', '-c1', '-w1', ip):
+        while not call(*control_prefix, 'ping', '-c1', '-w1', ip):
             pings += 1
             if pings > max_pings:
                 self.assertFalse(

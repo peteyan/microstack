@@ -3,9 +3,13 @@ import json
 import unittest
 import os
 import subprocess
+import time
+import xvfbwrapper
 from typing import List
 
 import petname
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 
 # Setup logging
@@ -48,85 +52,198 @@ def call(*args: List[str]) -> bool:
     return not subprocess.call(args)
 
 
-class Framework(unittest.TestCase):
+def gui_wrapper(func):
+    """Start up selenium drivers, run a test, then tear them down."""
 
-    PREFIX = []
-    DUMP_DIR = '/tmp'
-    MACHINE = ''
-    DISTRO = 'bionic'
-    SNAP = 'microstack_stein_amd64.snap'
-    HORIZON_IP = '10.20.20.1'
-    INIT_FLAG = 'auto'
+    def wrapper(cls, *args, **kwargs):
 
-    def install_snap(self, channel='dangerous', snap=None):
+        # Setup Selenium Driver
+        cls.display = xvfbwrapper.Xvfb(width=1280, height=720)
+        cls.display.start()
+        cls.driver = webdriver.PhantomJS()
+
+        # Run function
+        try:
+            return func(cls, *args, **kwargs)
+
+        finally:
+            # Tear down driver
+            cls.driver.quit()
+            cls.display.stop()
+
+    return wrapper
+
+
+class Host():
+    """A host with MicroStack installed."""
+
+    def __init__(self):
+        self.prefix = []
+        self.dump_dir = '/tmp'
+        self.machine = ''
+        self.distro = 'bionic'
+        self.snap = 'microstack_stein_amd64.snap'
+        self.horizon_ip = '10.20.20.1'
+        self.host_type = 'localhost'
+
+        if os.environ.get('MULTIPASS'):
+            self.host_type = 'multipass'
+            print("Booting a Multipass VM ...")
+            self.multipass()
+
+    def install(self, snap=None, channel='dangerous'):
         if snap is None:
-            snap = self.SNAP
+            snap = self.snap
+        print("Installing {}".format(snap))
 
-        check(*self.PREFIX, 'sudo', 'snap', 'install', '--classic',
+        check(*self.prefix, 'sudo', 'snap', 'install', '--classic',
               '--{}'.format(channel), snap)
 
-    def init_snap(self, flag='auto'):
-        check(*self.PREFIX, 'sudo', 'microstack.init', '--{}'.format(flag))
+    def init(self, flag='auto'):
+        print("Initializing the snap with --{}".format(flag))
+        check(*self.prefix, 'sudo', 'microstack.init', '--{}'.format(flag))
 
     def multipass(self):
-
-        self.MACHINE = petname.generate()
-        self.PREFIX = ['multipass', 'exec', self.MACHINE, '--']
-        distro = os.environ.get('DISTRO') or self.DISTRO
+        self.machine = petname.generate()
+        self.prefix = ['multipass', 'exec', self.machine, '--']
+        distro = os.environ.get('distro') or self.distro
 
         check('sudo', 'snap', 'install', '--classic', '--edge', 'multipass')
 
         check('multipass', 'launch', '--cpus', '2', '--mem', '8G', distro,
-              '--name', self.MACHINE)
-        check('multipass', 'copy-files', self.SNAP, '{}:'.format(self.MACHINE))
+              '--name', self.machine)
+        check('multipass', 'copy-files', self.snap, '{}:'.format(self.machine))
 
         # Figure out machine's ip
-        info = check_output('multipass', 'info', self.MACHINE, '--format',
+        info = check_output('multipass', 'info', self.machine, '--format',
                             'json')
         info = json.loads(info)
-        self.HORIZON_IP = info['info'][self.MACHINE]['ipv4'][0]
+        self.horizon_ip = info['info'][self.machine]['ipv4'][0]
 
     def dump_logs(self):
+        # TODO: make unique log name
         if check_output('whoami') == 'zuul':
-            self.DUMP_DIR = "/home/zuul/zuul-output/logs"
+            self.dump_dir = "/home/zuul/zuul-output/logs"
 
-        check(*self.PREFIX,
+        check(*self.prefix,
               'sudo', 'tar', 'cvzf',
-              '{}/dump.tar.gz'.format(self.DUMP_DIR),
+              '{}/dump.tar.gz'.format(self.dump_dir),
               '/var/snap/microstack/common/log',
               '/var/snap/microstack/common/etc',
               '/var/log/syslog')
-        if 'multipass' in self.PREFIX:
+        if 'multipass' in self.prefix:
             check('multipass', 'copy-files',
-                  '{}:/tmp/dump.tar.gz'.format(self.MACHINE), '.')
+                  '{}:/tmp/dump.tar.gz'.format(self.machine), '.')
         print('Saved dump.tar.gz to local working dir.')
 
-    def setUp(self):
-        self.passed = False  # HACK: trigger (or skip) cleanup.
-        if os.environ.get('MULTIPASS'):
-            print("Booting a Multipass VM ...")
-            self.multipass()
-        print("Installing {}".format(self.SNAP))
-        self.install_snap()
-        print("Initializing the snap with --{}".format(self.INIT_FLAG))
-        self.init_snap(self.INIT_FLAG)
-
-    def tearDown(self):
-        """Either dump logs in the case of failure, or clean up."""
-
-        if not self.passed:
-            # Skip teardown in the case of failures, so that we can
-            # inspect them.
-            # TODO: I'd like to use the errors and failures list in
-            # the test result, but I was having trouble getting to it
-            # from this routine. Need to do more digging and possibly
-            # elimiate the self.passed hack.
-            print("Tests failed. Dumping logs and exiting.")
-            return self.dump_logs()
-
-        print("Tests complete. Tearing down.")
-        if 'multipass' in self.PREFIX:
-            check('sudo', 'multipass', 'delete', self.MACHINE)
+    def teardown(self):
+        if 'multipass' in self.prefix:
+            check('sudo', 'multipass', 'delete', self.machine)
             check('sudo', 'multipass', 'purge')
         else:
             check('sudo', 'snap', 'remove', '--purge', 'microstack')
+
+
+class Framework(unittest.TestCase):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.HOSTS = []
+
+    def get_host(self):
+        if self.HOSTS:
+            return self.HOSTS[0]
+        host = Host()
+        self.HOSTS.append(host)
+        return host
+
+    def add_host(self):
+        host = Host()
+        self.HOSTS.append(host)
+        return host
+
+    def verify_instance_networking(self, host, instance_name):
+        """Verify that we have networking on an instance
+
+        We should be able to ping the instance.
+
+        And we should be able to reach the Internet.
+
+        """
+        prefix = host.prefix
+
+        # Ping the instance
+        print("Testing ping ...")
+        ip = None
+        servers = check_output(*prefix, '/snap/bin/microstack.openstack',
+                               'server', 'list', '--format', 'json')
+        servers = json.loads(servers)
+        for server in servers:
+            if server['Name'] == instance_name:
+                ip = server['Networks'].split(",")[1].strip()
+                break
+
+        self.assertTrue(ip)
+
+        pings = 1
+        max_pings = 600  # ~10 minutes!
+        while not call(*prefix, 'ping', '-c1', '-w1', ip):
+            pings += 1
+            if pings > max_pings:
+                self.assertFalse(True, msg='Max pings reached!')
+
+        print("Testing instances' ability to connect to the Internet")
+        # Test Internet connectivity
+        attempts = 1
+        max_attempts = 300  # ~10 minutes!
+        username = check_output(*prefix, 'whoami')
+
+        while not call(
+                *prefix,
+                'ssh',
+                '-oStrictHostKeyChecking=no',
+                '-i', '/home/{}/.ssh/id_microstack'.format(username),
+                'cirros@{}'.format(ip),
+                '--', 'ping', '-c1', '91.189.94.250'):
+            attempts += 1
+            if attempts > max_attempts:
+                self.assertFalse(
+                    True,
+                    msg='Unable to access the Internet!')
+            time.sleep(1)
+
+    @gui_wrapper
+    def verify_gui(self, host):
+        """Verify that Horizon Dashboard works
+
+        We should be able to reach the dashboard.
+
+        We should be able to login.
+
+        """
+        # Test
+        print('Verifying GUI for (IP: {})'.format(host.horizon_ip))
+        # Verify that our GUI is working properly
+        self.driver.get("http://{}/".format(host.horizon_ip))
+        # Login to horizon!
+        self.driver.find_element(By.ID, "id_username").click()
+        self.driver.find_element(By.ID, "id_username").send_keys("admin")
+        self.driver.find_element(By.ID, "id_password").send_keys("keystone")
+        self.driver.find_element(By.CSS_SELECTOR, "#loginBtn > span").click()
+        # Verify that we can click something on the dashboard -- e.g.,
+        # we're still not sitting at the login screen.
+        self.driver.find_element(By.LINK_TEXT, "Images").click()
+
+    def setUp(self):
+        self.passed = False  # HACK: trigger (or skip) cleanup.
+
+    def tearDown(self):
+        """Clean hosts up, possibly leaving debug information behind."""
+
+        print("Tests complete. Cleaning up.")
+        while self.HOSTS:
+            host = self.HOSTS.pop()
+            if not self.passed:
+                print("Dumping logs for {}".format(host.machine))
+                host.dump_logs()
+            host.teardown()
