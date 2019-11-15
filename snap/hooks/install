@@ -1,53 +1,8 @@
 #!/bin/bash
 set -ex
 
-# Initialize Config
-# TODO: put this in a nice yaml format, and parse it.
-
-# General snap-wide settings
-snapctl set \
-        config.clustered=false \
-        config.post-setup=true \
-        ;
-
-# Networking related settings.
-snapctl set \
-        config.network.dns=1.1.1.1 \
-        config.network.ext-gateway=10.20.20.1 \
-        config.network.control-ip=10.20.20.1 \
-        config.network.compute-ip=10.20.20.1 \
-        config.network.ext-cidr=10.20.20.1/24 \
-        config.network.security-rules=true \
-        config.network.dashboard-allowed-hosts="*" \
-        ;
-
-# Passwords, certs, etc.
-snapctl set \
-        config.credentials.os-password=keystone \
-        config.credentials.key-pair=id_microstack \
-        config.credentials.nova-password=nova \
-        config.credentials.neutron-password=neutron \
-        config.credentials.placement-password=placement \
-        config.credentials.glance-password=glance \
-        ;
-
-# Host optimizations and fixes.
-snapctl set \
-        config.host.ip-forwarding=true \
-        config.host.check-qemu=true \
-        ;
-
-# Enable or disable groups of services.
-snapctl set \
-        config.services.control-plane=true \
-        config.services.hypervisor=true \
-        ;
-
-# Clustering roles
-snapctl set \
-        cluster.role=control \
-        cluster.password=null \
-        ;
+# Initialize config
+set-default-config
 
 # MySQL snapshot for speedy install
 # snapshot is a mysql data dir with

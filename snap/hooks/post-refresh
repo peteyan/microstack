@@ -1,0 +1,19 @@
+#!/bin/bash
+set -ex
+
+if [ -z "$(snapctl get config)" ]; then
+    # [2019-11-15] Handle build 171 (beta) -> 182
+
+    # We are upgrading from a version of the snap from before we put all
+    # config values under a config tree. Set the default values now (the
+    # old values were not documented, and we assume that they were not
+    # set).
+    set-default-config
+
+    # Make a place for our horizon config overrides to live. We piggy
+    # back on the above check, because the changes were made
+    # concurrently.
+    mkdir -p ${SNAP_COMMON}/etc/horizon/local_settings.d
+fi
+
+snap-openstack setup  # Write any template changes.
