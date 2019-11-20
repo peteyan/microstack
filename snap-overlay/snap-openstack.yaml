@@ -68,6 +68,7 @@ setup:
     extgateway: 'config.network.ext-gateway'
     extcidr: 'config.network.ext-cidr'
     dns: 'config.network.dns'
+    dashboard_allowed_hosts: 'config.network.dashboard-allowed-hosts'
 entry_points:
   keystone-manage:
     binary: "{snap}/bin/keystone-manage"

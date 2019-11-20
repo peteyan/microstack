@@ -28,7 +28,7 @@ OPENSTACK_KEYSTONE_DEFAULT_ROLE = "_member_"
 
 # Turn off external access for now.  (This should be turned on once we
 # have hooks for setting a non default password.)
-ALLOWED_HOSTS = ['10.20.20.1', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = "{{ dashboard_allowed_hosts }}".split(",")
 
 # Use memcached as our caching backend.
 CACHES = {

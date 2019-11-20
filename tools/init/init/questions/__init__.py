@@ -249,30 +249,15 @@ class FileHandleLimits(Question):
         pass
 
 
-class DashboardAccess(Question):
+class DashboardAccess(ConfigQuestion):
 
     _type = 'string'
+    _question = 'Dashboard allowed hosts.'
     config_key = 'config.network.dashboard-allowed-hosts'
 
     def yes(self, answer):
         log.info("Opening horizon dashboard up to {hosts}".format(
             hosts=answer))
-
-        path_ = ('{SNAP_COMMON}/etc/horizon/local_settings.d'
-                 '/_10_hosts.py'.format(**_env))
-
-        allowed_hosts = answer.split(',')
-
-        # TODO: move to template.
-        # TODO: sanitize (since we're writing to executable Python!)
-        with open(path_, 'w') as hosts:
-            hosts.write("""\
-ALLOWED_HOSTS = {hosts}
-""".format(hosts=allowed_hosts))
-
-        # Restart if needed.
-        if check_output('snapctl', 'get', 'initialized'):
-            check('snapctl', 'restart', 'microstack.horizon-uwsgi')
 
 
 class RabbitMq(Question):
