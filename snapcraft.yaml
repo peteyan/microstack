@@ -800,32 +800,6 @@ parts:
       - --with-default-system-dir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/etc/
     build-attributes: [no-patchelf]
 
-  # Networking tools
-  iptables:
-    source: http://iptables.netfilter.org/projects/iptables/files/iptables-1.6.0.tar.bz2
-    plugin: autotools
-    build-packages:
-      - libnftnl-dev
-    stage-packages:
-      - libatm1
-      # Additional utilties for hypervisor networking
-      - iproute2
-      - bridge-utils
-      - ipset
-    configflags:
-      - --disable-nftables
-      - --prefix=/snap/$SNAPCRAFT_PROJECT_NAME/current
-    override-build: |
-      snapcraftctl build
-      cp --remove-destination $SNAPCRAFT_PART_INSTALL/snap/$SNAPCRAFT_PROJECT_NAME/current/sbin/xtables-multi \
-        $SNAPCRAFT_PART_INSTALL/snap/$SNAPCRAFT_PROJECT_NAME/current/bin/iptables-xml
-    organize:
-      # Hack to shift installed iptables back to root of snap
-      # required to ensure that pathing to files etc works at
-      # runtime
-      # * is not used to avoid directory merge conflicts
-      snap/microstack/current/: ./
-
   # Templates and other files to be overlaid over the snap.
   overlay:
     plugin: dump
