@@ -27,6 +27,9 @@ apps:
 #    plugs:
 #      - network
 
+  remove:
+    command: microstack_remove
+
   # Keystone
   keystone-uwsgi:
     command: snap-openstack launch keystone-uwsgi

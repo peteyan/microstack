@@ -31,7 +31,7 @@ from init.shell import (check, call, check_output, shell, sql, nc_wait,
                         log_wait, restart, download)
 from init.config import Env, log
 from init.questions.question import Question
-from init.questions import clustering, network
+from init.questions import clustering, network, uninstall  # noqa F401
 
 
 _env = Env().get_env()

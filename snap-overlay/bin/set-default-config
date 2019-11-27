@@ -52,3 +52,9 @@ snapctl set \
         cluster.role=control \
         cluster.password=null \
         ;
+
+# Uninstall stuff
+snapctl set \
+        config.cleanup.delete-bridge=true \
+        config.cleanup.remove=true \
+        ;

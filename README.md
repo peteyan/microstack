@@ -67,6 +67,23 @@ credentials are:
     username: admin
     password: keystone
 
+## Removing MicroStack
+
+To remove MicroStack, run:
+
+    sudo microstack.remove --auto
+
+This will clean up the Open vSwitch bridge device and uninstall
+MicroStack. If you remove MicroStack with the `snap remove` command
+instead, don't worry -- the Open vSwitch bridge will disappear the
+next time that you reboot your system.
+
+Note that you can pass any arguments that you'd pass to the `snap
+remove` command to `microstack.remove`. To purge the snap,
+for example, run:
+
+    sudo microstack.remove --auto --purge
+
 ## Customising and contributing
 
 To customise services and settings, look in the `.d` directories under
