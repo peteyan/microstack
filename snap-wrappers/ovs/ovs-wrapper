@@ -1,16 +1,42 @@
 #!/bin/bash
 
+# important: not to echo or print anything on stdout, will be taken into ovs-ctl
+
 set -e
 
 export OVS_LOGDIR=${SNAP_COMMON}/log/openvswitch
 export OVS_RUNDIR=${SNAP_COMMON}/run/openvswitch
 export OVS_SYSCONFDIR=${SNAP_COMMON}/etc
-export OVS_PKGDATADIR=${SNAP}/share/openvswitch
-export OVS_BINDIR=${SNAP}/bin
-export OVS_SBINDIR=${SNAP}/sbin
+export OVS_PKGDATADIR=${SNAP}/openvswitch-dpdk/share/openvswitch
+
+if [ "$(snapctl get config.network.ovs-dpdk)" == "false" ]; then
+    export OVS_BINDIR=${SNAP}/openvswitch/bin
+    export OVS_SBINDIR=${SNAP}/openvswitch/sbin
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${SNAP}/openvswitch/lib:${SNAP}/openvswitch/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}"
+else
+    export OVS_BINDIR=${SNAP}/openvswitch-dpdk/bin
+    export OVS_SBINDIR=${SNAP}/openvswitch-dpdk/sbin
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${SNAP}/openvswitch-dpdk/lib:${SNAP}/openvswitch-dpdk/usr/lib/${SNAPCRAFT_ARCH_TRIPLET}"
+fi
 
 mkdir -p ${OVS_LOGDIR}
 mkdir -p ${OVS_RUNDIR}
 mkdir -p ${OVS_SYSCONFDIR}/openvswitch
 
-exec $@
+# need to maintain ovsdb-server and ovs-vswtichd unix socket path:
+shopt -s nullglob
+for ctl in $OVS_RUNDIR/*.real.*.ctl;
+do
+    ln -fs $ctl "${ctl//.real/}"
+done
+# needs further testing: vvv
+#echo "find $OVS_RUNDIR/*.ctl -xtype l -delete"
+shopt -u nullglob
+
+if [[ "$0" == *"ovs-wrapper"* ]]; then
+  cmd=$(command -v ${1})
+  exec ${cmd%/*}/real/${cmd##*/} "${@:2}"
+else
+  # command is symlink to this script
+  exec "${0%/*}/real/${0##*/}" "${@}"
+fi

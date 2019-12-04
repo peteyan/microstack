@@ -170,12 +170,20 @@ class NetworkSettings(Question):
     """Write network settings, and """
     _type = 'auto'
     _question = 'Network settings'
+    interactive = True
 
     def yes(self, answer):
         log.info('Configuring networking ...')
 
-        network.ExtGateway().ask()
-        network.ExtCidr().ask()
+        questions = [
+            network.ExtGateway(),
+            network.ExtCidr(),
+            network.OvsDpdk(),
+        ]
+        for question in questions:
+            if not self.interactive:
+                question.interactive = False
+            question.ask()
 
         # Now that we have default or overriden values, setup the
         # bridge and write all the proper values into our config
@@ -183,7 +191,13 @@ class NetworkSettings(Question):
         check('setup-br-ex')
         check('snap-openstack', 'setup')
 
-        network.IpForwarding().ask()
+        questions = [
+            network.IpForwarding(),
+        ]
+        for question in questions:
+            if not self.interactive:
+                question.interactive = False
+            question.ask()
 
 
 class OsPassword(ConfigQuestion):
@@ -352,8 +366,9 @@ class DatabaseSetup(Question):
 
         # Start keystone-uwsgi. We use snapctl, because systemd
         # doesn't yet know about the service.
-        check('snapctl', 'start', 'microstack.nginx')
-        check('snapctl', 'start', 'microstack.keystone-uwsgi')
+        check('snapctl', 'start', '{SNAP_INSTANCE_NAME}.nginx'.format(**_env))
+        check('snapctl', 'start',
+              '{SNAP_INSTANCE_NAME}.keystone-uwsgi'.format(**_env))
 
         log.info('Configuring Keystone Fernet Keys ...')
         check('snap-openstack', 'launch', 'keystone-manage',
@@ -388,6 +403,12 @@ class NovaHypervisor(Question):
     _type = 'boolean'
     config_key = 'config.services.hypervisor'
 
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.nova-compute'.format(**_env)
+        ]
+
     def yes(self, answer):
         log.info('Configuring nova compute hypervisor ...')
 
@@ -401,11 +422,14 @@ class NovaHypervisor(Question):
                      'microstack', 'compute', endpoint,
                      'http://{compute_ip}:8774/v2.1'.format(**_env))
 
-        check('snapctl', 'start', 'microstack.nova-compute')
+        for service in self.services:
+            check('snapctl', 'start', service)
 
     def no(self, answer):
         log.info('Disabling nova compute service ...')
-        check('systemctl', 'disable', 'snap.microstack.nova-compute')
+
+        for service in self.services:
+            check('systemctl', 'disable', 'snap.{}'.format(service))
 
 
 class NovaControlPlane(Question):
@@ -413,6 +437,17 @@ class NovaControlPlane(Question):
 
     _type = 'boolean'
     config_key = 'config.services.control-plane'
+
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.nova-api'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.nova-api-metadata'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.nova-compute'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.nova-conductor'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.nova-scheduler'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.nova-uwsgi'.format(**_env)
+        ]
 
     def _flavors(self) -> None:
         """Create default flavors."""
@@ -463,13 +498,7 @@ class NovaControlPlane(Question):
         # out manually, because systemd doesn't know about them yet.
         # TODO: parse the output of `snapctl services` to get this
         # list automagically.
-        for service in [
-                'microstack.nova-api',
-                'microstack.nova-api-metadata',
-                'microstack.nova-conductor',
-                'microstack.nova-scheduler',
-                'microstack.nova-uwsgi',
-        ]:
+        for service in self.services:
             check('snapctl', 'start', service)
 
         check('snap-openstack', 'launch', 'nova-manage', 'api_db', 'sync')
@@ -500,14 +529,10 @@ class NovaControlPlane(Question):
     def no(self, answer):
         log.info('Disabling nova control plane services ...')
 
-        for service in [
-                'snap.microstack.nova-uwsgi',
-                'snap.microstack.nova-api',
-                'snap.microstack.nova-conductor',
-                'snap.microstack.nova-scheduler',
-                'snap.microstack.nova-api-metadata']:
+        nova_compute = '{SNAP_INSTANCE_NAME}.nova-compute'.format(**_env)
 
-            check('systemctl', 'disable', service)
+        for service in self.services.remove(nova_compute) or []:
+            check('systemctl', 'disable', 'snap.{}'.format(service))
 
 
 class NeutronControlPlane(Question):
@@ -515,6 +540,16 @@ class NeutronControlPlane(Question):
 
     _type = 'boolean'
     config_key = 'config.services.control-plane'
+
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.neutron-api'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.neutron-dhcp-agent'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.neutron-l3-agent'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.neutron-metadata-agent'.format(**_env),
+            '{SNAP_INSTANCE_NAME}.neutron-openvswitch-agent'.format(**_env),
+        ]
 
     def yes(self, answer: str) -> None:
         log.info('Configuring Neutron')
@@ -533,13 +568,7 @@ class NeutronControlPlane(Question):
                      'microstack', 'network', endpoint,
                      'http://{control_ip}:9696'.format(**_env))
 
-        for service in [
-                'microstack.neutron-api',
-                'microstack.neutron-dhcp-agent',
-                'microstack.neutron-l3-agent',
-                'microstack.neutron-metadata-agent',
-                'microstack.neutron-openvswitch-agent',
-        ]:
+        for service in self.services:
             check('snapctl', 'start', service)
 
         check('snap-openstack', 'launch', 'neutron-db-manage', 'upgrade',
@@ -579,20 +608,16 @@ class NeutronControlPlane(Question):
         neutron on this machine.
 
         """
+        openvswitch_agent = """snap.{SNAP_INSTANCE_NAME}.\
+neutron-openvswitch-agent""".format(**_env)
+
         # Make sure that the agent is running.
-        for service in [
-                'microstack.neutron-openvswitch-agent',
-        ]:
+        for service in [openvswitch_agent]:
             check('snapctl', 'start', service)
 
         # Disable the other services.
-        for service in [
-                'snap.microstack.neutron-api',
-                'snap.microstack.neutron-dhcp-agent',
-                'snap.microstack.neutron-metadata-agent',
-                'snap.microstack.neutron-l3-agent',
-        ]:
-            check('systemctl', 'disable', service)
+        for service in self.services.remove(openvswitch_agent) or []:
+            check('systemctl', 'disable', 'snap.{}'.format(service))
 
 
 class GlanceSetup(Question):
@@ -600,6 +625,14 @@ class GlanceSetup(Question):
 
     _type = 'boolean'
     config_key = 'config.services.control-plane'
+
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.glance-api'.format(**_env),
+            # TODO rename this to glance-registry
+            '{SNAP_INSTANCE_NAME}.registry'.format(**_env),
+        ]
 
     def _fetch_cirros(self) -> None:
 
@@ -644,10 +677,7 @@ class GlanceSetup(Question):
                       'microstack', 'image', endpoint,
                       'http://{compute_ip}:9292'.format(**_env))
 
-        for service in [
-                'microstack.glance-api',
-                'microstack.registry',  # TODO rename to glance-registery
-        ]:
+        for service in self.services:
             check('snapctl', 'start', service)
 
         check('snap-openstack', 'launch', 'glance-manage', 'db_sync')
@@ -661,8 +691,8 @@ class GlanceSetup(Question):
         self._fetch_cirros()
 
     def no(self, answer):
-        check('systemctl', 'disable', 'snap.microstack.glance-api')
-        check('systemctl', 'disable', 'snap.microstack.registry')
+        for service in self.services:
+            check('systemctl', 'disable', 'snap.{}'.format(service))
 
 
 class KeyPair(Question):
@@ -731,6 +761,12 @@ class PostSetup(Question):
 
     config_key = 'config.post-setup'
 
+    @property
+    def services(self):
+        return [
+            '{SNAP_INSTANCE_NAME}.horizon-uwsgi'.format(**_env)
+        ]
+
     def yes(self, answer: str) -> None:
 
         log.info('restarting libvirt and virtlogd ...')
@@ -739,7 +775,8 @@ class PostSetup(Question):
         restart('*virt*')
 
         # Start horizon
-        check('snapctl', 'start', 'microstack.horizon-uwsgi')
+        for service in self.services:
+            check('snapctl', 'start', service)
 
         check('snapctl', 'set', 'initialized=true')
         log.info('Complete. Marked microstack as initialized!')

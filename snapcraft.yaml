@@ -318,8 +318,69 @@ apps:
   join:
     command: python3 ${SNAP}/lib/python3.6/site-packages/cluster/client.py
 
+  testpmd:
+      command: dpdk/bin/testpmd
+      #plugs:
+      #  - network
+      #  - network-bind
+      #  - network-control
+      #  - network-observe
+      #  - hardware-observe
+      #  #- hugepages-observe
+      #  #- hugepages-control
+      #  - process-control
+      #  - system-observe
+      #  #- dpdk-control
+      #  - kernel-module-control
+      #  - kernel-module-observe
+
+  dpdk-devbind:
+      command: dpdk/sbin/dpdk-devbind
+      #plugs:
+      #  - network
+      #  - network-bind
+      #  - network-control
+      #  - network-observe
+      #  - hardware-observe
+      #  - system-observe
+      #  #- dpdk-control
+      #  - kernel-module-control
+      #  - kernel-module-observe
+
+  dpdk-setup:
+      command: dpdk/share/dpdk/usertools/dpdk-setup.sh
+      #plugs:
+      #  - network
+      #  - network-bind
+      #  - network-control
+      #  - network-observe
+      #  - hardware-observe
+      #  #- system-observer
+      #  #- dpdk-control
+      #  - kernel-module-control
+      #  - kernel-module-observe
+
+  ovs-alternatives:
+      command: bin/ovs-alternatives
 
 parts:
+  dpdk:
+    plugin: make
+    source: http://dpdk.org/git/dpdk-stable
+    source-type: git
+    source-tag: v18.11 # LTS Version, comment out or change tag to what version you require.
+    after:
+      - patches
+      - uca-sources
+    build-packages:
+      - linux-headers-4.15.0-65-generic
+      - build-essential
+    override-build: |
+      # staging libraries conflict with other parts packages
+      unset CPPFLAGS
+      # make V=1 for verbose
+      make install --directory ${SNAPCRAFT_PART_BUILD} T=x86_64-native-linuxapp-gcc DESTDIR=$SNAPCRAFT_PART_INSTALL/dpdk RTE_KERNELDIR=/usr/src/linux-headers-4.15.0-65-generic # RTE_KERNELDIR is only needed if kernel version is not the same as installed on build host.
+
   # Add Ubuntu Cloud Archive sources.
   # Allows us to fetch things such as updated libvirt.
   uca-sources:
@@ -502,7 +563,34 @@ parts:
     prime:
       - -*
 
+  openvswitch-dpdk:
+    # TODO: figure out a better way to fetch the version
+    source: http://openvswitch.org/releases/openvswitch-2.11.1.tar.gz
+    plugin: autotools
+    build-packages:
+      - libssl-dev
+      - try: [libnuma-dev]
+      - libcap-ng-dev
+      - libpcap-dev
+      - libunbound-dev
+      - python-all
+      - python-six
+      - python-setuptools
+    stage-packages:
+      - uuid-runtime
+      - libunbound2
+    configflags:
+      - "--localstatedir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common"
+      - "--sysconfdir=/var/snap/$SNAPCRAFT_PROJECT_NAME/etc"
+      - "--with-dpdk=$SNAPCRAFT_STAGE/dpdk"
+    after:
+      - patches
+      - dpdk
+    organize:
+      ./*: openvswitch-dpdk/
+
   openvswitch:
+    # TODO: figure out a better way to fetch the version
     source: http://openvswitch.org/releases/openvswitch-2.11.1.tar.gz
     plugin: autotools
     build-packages:
@@ -522,12 +610,53 @@ parts:
       - "--sysconfdir=/var/snap/$SNAPCRAFT_PROJECT_NAME/etc"
     after:
       - patches
+    organize:
+      ./*: openvswitch/
+
+  ovs-alternatives:
+    source: ./snap-wrappers/ovs
+    plugin: dump
+    after:
+      - openvswitch
+      - openvswitch-dpdk
+    organize:
+      ovs-alternatives: bin/ovs-alternatives
+
+  ovs-alternatives-init:
+    plugin: nil
+    after:
+      - openvswitch
+      - openvswitch-dpdk
+    override-prime: |
+      # assume we don't have different binaries for the two builds
+      # Create initial links for openvswitch binaries
+      for dir in \
+        bin \
+        etc/init.d \
+        sbin \
+        share/openvswitch/scripts \
+        usr/bin \
+        var/snap/${SNAPCRAFT_PROJECT_NAME}/etc/bash_completion.d \
+        ; do
+          cd ${SNAPCRAFT_PRIME}/openvswitch/
+          mkdir -p ${SNAPCRAFT_PRIME}/${dir}/real
+          for file in ${dir}/*; do
+            ln -fs /snap/${SNAPCRAFT_PROJECT_NAME}/current/bin/ovs-wrapper ${SNAPCRAFT_PRIME}/${dir}/${file##*/}
+            ln -fs /var/snap/${SNAPCRAFT_PROJECT_NAME}/common/${dir}/${file##*/} ${SNAPCRAFT_PRIME}/${dir}/real/${file##*/}
+          done
+          cd -
+      done
+            # special file: ovs-lib
+            # there is no way in POSIX sh to detect if being sourced from another script
+            ln -fs /snap/${SNAPCRAFT_PROJECT_NAME}/current/share/openvswitch/scripts/real/ovs-lib ${SNAPCRAFT_PRIME}/share/openvswitch/scripts/ovs-lib
+      snapcraftctl prime
 
   ovs-wrapper:
     source: ./snap-wrappers/ovs
     plugin: dump
     after:
       - openvswitch
+      - openvswitch-dpdk
     organize:
       ovs-wrapper: bin/ovs-wrapper
 
@@ -536,6 +665,8 @@ parts:
     plugin: autotools
     after:
       - patches
+      - uca-sources
+      - dpdk
     configflags:
       - --prefix=/usr
       - "--http-log-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/log/nginx-access.log"
@@ -668,7 +799,7 @@ parts:
       # required to ensure that pathing to files etc works at
       # runtime
       # * is not used to avoid directory merge conflicts
-      snap/microstack/current/: ./
+      snap/${SNAPCRAFT_PROJECT_NAME}/current/: ./
 
   kvm-support:
     plugin: nil
@@ -755,7 +886,7 @@ parts:
       # required to ensure that pathing to files etc works at
       # runtime
       # * is not used to avoid directory merge conflicts
-      snap/microstack/current/: ./
+      snap/${SNAPCRAFT_PROJECT_NAME}/current/: ./
 
   # MySQL
   mysql-server:
