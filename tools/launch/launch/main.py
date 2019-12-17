@@ -146,23 +146,28 @@ def launch(name, args):
                       '-c', 'floating_ip_address', 'external')
     check('openstack', 'server', 'add', 'floating', 'ip', server_id, ip)
 
+    # We've launched! Make some guesses about usernames and the
+    # location of the ssh key in the operator's system, so we can tell
+    # the them how to access their new server.  TODO: is it possible
+    # to make this logic more sophisticated?
     username = '<username>'
-    if args.flavor:
-        # Try to guess at a username.
-        # TODO: make this more sophisticated.
-        if 'fedora' in args.flavor.lower():
-            username = 'fedora'
-        if 'ubuntu' in args.flavor.lower():
-            username = 'ubuntu'
-        if 'cirros' in args.flavor.lower():
-            username = 'cirros'
+    if 'fedora' in args.image.lower():
+        username = 'fedora'
+    if 'ubuntu' in args.image.lower():
+        username = 'ubuntu'
+    if 'cirros' in args.image.lower():
+        username = 'cirros'
+
+    ssh_key = '/path/to/ssh/key'
+    if args.key == 'microstack':
+        ssh_key = '$HOME/.ssh/id_microstack'
 
     print("""\
 Server {name} launched! (status is {status})
 
-Access it with `ssh -i \
-$HOME/.ssh/id_microstack` {username}@{ip}""".format(name=name, status=status,
-                                                    username=username, ip=ip))
+Access it with `ssh -i {ssh_key} {username}@{ip}`\
+""".format(name=name, status=status, ssh_key=ssh_key,
+           username=username, ip=ip))
 
     gate = check_output('snapctl', 'get', 'config.network.ext-gateway')
     port = check_output('snapctl', 'get', 'config.network.ports.dashboard')
