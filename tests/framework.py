@@ -141,7 +141,9 @@ class Host():
             check('sudo', 'multipass', 'delete', self.machine)
             check('sudo', 'multipass', 'purge')
         else:
-            check('sudo', 'snap', 'remove', '--purge', 'microstack')
+            if call('snap', 'list', 'microstack'):
+                # Uninstall microstack if it is installed (it may not be).
+                check('sudo', 'snap', 'remove', '--purge', 'microstack')
 
 
 class Framework(unittest.TestCase):
@@ -241,7 +243,7 @@ class Framework(unittest.TestCase):
         self.driver.find_element(By.LINK_TEXT, "Images").click()
 
     def setUp(self):
-        self.passed = False  # HACK: trigger (or skip) cleanup.
+        self.passed = False  # HACK: trigger (or skip) log dumps.
 
     def tearDown(self):
         """Clean hosts up, possibly leaving debug information behind."""

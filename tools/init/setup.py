@@ -7,8 +7,9 @@ setup(
     version="0.0.1",
     entry_points={
         'console_scripts': [
-            'microstack_init = init.main:main',
-            'set_network_info = init.set_network_info:main',
+            'microstack_init = init.main:init',
+            'set_network_info = init.main:set_network_info',
+            'microstack_remove = init.main:remove',
         ],
     },
 )

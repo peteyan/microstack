@@ -65,6 +65,27 @@ class TestBasics(Framework):
         # The Horizon Dashboard should function
         self.verify_gui(host)
 
+        # Verify that we can uninstall the snap cleanly, and that the
+        # ovs bridge goes away.
+
+        # Check to verify that our bridge is there.
+        self.assertTrue('br-ex' in check_output(*prefix, 'ip', 'a'))
+
+        # Try to uninstall snap without sudo.
+        self.assertFalse(call(*prefix, '/snap/bin/microstack.remove',
+                              '--purge', '--auto'))
+
+        # Retry with sudo (should succeed).
+        check(*prefix, 'sudo', '/snap/bin/microstack.remove',
+              '--purge', '--auto')
+
+        # Verify that MicroStack is gone.
+        self.assertFalse(call(*prefix, 'snap', 'list', 'microstack'))
+
+        # Verify that bridge is gone.
+        self.assertFalse('br-ex' in check_output(*prefix, 'ip', 'a'))
+
+        # We made it to the end. Set passed to True!
         self.passed = True
 
 

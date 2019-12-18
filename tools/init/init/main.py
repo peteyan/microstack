@@ -35,13 +35,27 @@ import secrets
 import string
 import sys
 
+from functools import wraps
+
 from init.config import log
-from init.shell import check
+from init.shell import default_network, check, check_output
 
 from init import questions
 
 
-def parse_args():
+def requires_sudo(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if int(check_output('id', '-u')):
+            log.error("This script must be run with root privileges. "
+                      "Please re-run with sudo.")
+            sys.exit(1)
+
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def parse_init_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--auto', '-a', action='store_true',
                         help='Run non interactively.')
@@ -53,7 +67,7 @@ def parse_args():
     return args
 
 
-def process_args(args):
+def process_init_args(args):
     """Look through our args object and set the proper default config
     values in our snap config, based on those args.
 
@@ -80,7 +94,8 @@ def process_args(args):
     if auto and not args.cluster_password:
         alphabet = string.ascii_letters + string.digits
         password = ''.join(secrets.choice(alphabet) for i in range(10))
-        check('snapctl', 'set', 'config.cluster.password={}'.format(password))
+        check('snapctl', 'set', 'config.cluster.password={}'.format(
+            password))
 
     if args.debug:
         log.setLevel(logging.DEBUG)
@@ -88,9 +103,10 @@ def process_args(args):
     return auto
 
 
-def main() -> None:
-    args = parse_args()
-    auto = process_args(args)
+@requires_sudo
+def init() -> None:
+    args = parse_init_args()
+    auto = process_init_args(args)
 
     question_list = [
         questions.Clustering(),
@@ -125,5 +141,47 @@ def main() -> None:
             sys.exit(1)
 
 
-if __name__ == '__main__':
-    main()
+def set_network_info() -> None:
+    """Find and use the  default network on a machine.
+
+    Helper to find the default network on a machine, and configure
+    MicroStack to use it in its default settings.
+
+    """
+    try:
+        ip, gate, cidr = default_network()
+    except Exception:
+        # TODO: more specific exception handling.
+        log.exception(
+            'Could not determine default network info. '
+            'Falling back on 10.20.20.1')
+        return
+
+    check('snapctl', 'set', 'config.network.ext-gateway={}'.format(gate))
+    check('snapctl', 'set', 'config.network.ext-cidr={}'.format(cidr))
+    check('snapctl', 'set', 'config.network.control-ip={}'.format(ip))
+    check('snapctl', 'set', 'config.network.control-ip={}'.format(ip))
+
+
+@requires_sudo
+def remove() -> None:
+    """Helper to cleanly uninstall MicroStack."""
+
+    # Strip '--auto' out of the args passed to this command, as we
+    # need to check it, but also pass the other args off to the
+    # snapd's uninstall command. TODO: make this less hacky.
+    auto = False
+    if '--auto' in questions.uninstall.ARGS:
+        auto = True
+    questions.uninstall.ARGS = [
+        arg for arg in questions.uninstall.ARGS if 'auto' not in arg]
+
+    question_list = [
+        questions.uninstall.DeleteBridge(),
+        questions.uninstall.RemoveMicrostack(),
+    ]
+
+    for question in question_list:
+        if auto:
+            question.interactive = False
+        question.ask()
