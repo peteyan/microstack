@@ -1,6 +1,5 @@
 import argparse
 import json
-import petname
 import os
 import subprocess
 import time
@@ -178,7 +177,11 @@ Access it with `ssh -i {ssh_key} {username}@{ip}`\
 
 def main():
     args = parse_args()
-    name = args.name or petname.generate()
+    # Call petname via bash, due to
+    # https://bugs.launchpad.net/snapcraft/+bug/1860768
+    name = args.name or check_output(
+        'petname', '-d', '{}/usr/share/petname'.format(
+            os.environ.get('SNAP', '')))
 
     # Parse microstack.rc
     # TODO: we need a share lib that does this in a more robust way.

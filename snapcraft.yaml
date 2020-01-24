@@ -23,47 +23,50 @@ apps:
 
   # OpenStack Service Configuration
   init:
-    command: microstack_init
+    # This and other instances of /usr/bin/env are workarounds for
+    # https://bugs.launchpad.net/snapd/+bug/1860369. We force snapcraft
+    # to put us in a wrapper.
+    command: /usr/bin/env microstack_init
 #    plugs:
 #      - network
 
   remove:
-    command: microstack_remove
+    command: /usr/bin/env microstack_remove
 
   # Keystone
   keystone-uwsgi:
-    command: snap-openstack launch keystone-uwsgi
+    command: /usr/bin/env snap-openstack launch keystone-uwsgi
     daemon: simple
 #    plugs:
 #      - network-bind
   keystone-manage:
-    command: snap-openstack launch keystone-manage
+    command: /usr/bin/env snap-openstack launch keystone-manage
 #    plugs:
 #      - network
 
   # Nova
   nova-uwsgi:
-    command: snap-openstack launch nova-uwsgi
+    command: /usr/bin/env snap-openstack launch nova-uwsgi
     daemon: simple
 #    plugs:
 #      - network-bind
   nova-api:
-    command: snap-openstack launch nova-api-os-compute
+    command: /usr/bin/env snap-openstack launch nova-api-os-compute
     daemon: simple
 #    plugs:
 #      - network-bind
   nova-conductor:
-    command: snap-openstack launch nova-conductor
+    command: /usr/bin/env snap-openstack launch nova-conductor
     daemon: simple
 #    plugs:
 #      - network
   nova-scheduler:
-    command: snap-openstack launch nova-scheduler
+    command: /usr/bin/env snap-openstack launch nova-scheduler
     daemon: simple
 #    plugs:
 #      - network
   nova-compute:
-    command: snap-openstack launch nova-compute
+    command: /usr/bin/env snap-openstack launch nova-compute
     daemon: simple
 #    plugs:
 #      - network-bind
@@ -73,24 +76,24 @@ apps:
 #      - libvirt
 #      - openvswitch
   nova-api-metadata:
-    command: snap-openstack launch nova-api-metadata
+    command: /usr/bin/env snap-openstack launch nova-api-metadata
     daemon: simple
 #    plugs:
 #      - network-bind
 #      - firewall-control
   nova-manage:
-    command: snap-openstack launch nova-manage
+    command: /usr/bin/env snap-openstack launch nova-manage
 #    plugs:
 #      - network
 
   # Neutron
   neutron-api:
-    command: snap-openstack launch neutron-server
+    command: /usr/bin/env snap-openstack launch neutron-server
     daemon: simple
 #    plugs:
 #      - network-bind
   neutron-openvswitch-agent:
-    command: snap-openstack launch neutron-openvswitch-agent
+    command: /usr/bin/env snap-openstack launch neutron-openvswitch-agent
     daemon: simple
 #    plugs:
 #      - network-bind
@@ -101,7 +104,7 @@ apps:
 #      - system-observe
 #      - openvswitch
   neutron-l3-agent:
-    command: snap-openstack launch neutron-l3-agent
+    command: /usr/bin/env snap-openstack launch neutron-l3-agent
     daemon: simple
 #    plugs:
 #      - network-bind
@@ -112,7 +115,7 @@ apps:
 #      - system-observe
 #      - openvswitch
   neutron-dhcp-agent:
-    command: snap-openstack launch neutron-dhcp-agent
+    command: /usr/bin/env snap-openstack launch neutron-dhcp-agent
     daemon: simple
 #    plugs:
 #      - network
@@ -123,48 +126,48 @@ apps:
 #      - system-observe
 #      - openvswitch
   neutron-metadata-agent:
-    command: snap-openstack launch neutron-metadata-agent
+    command: /usr/bin/env snap-openstack launch neutron-metadata-agent
     daemon: simple
 #    plugs:
 #      - network
 #      - network-bind
 #      - network-control
   neutron-ovs-cleanup:
-    command: snap-openstack launch neutron-ovs-cleanup
+    command: /usr/bin/env snap-openstack launch neutron-ovs-cleanup
 #    plugs:
 #      - network
 #      - network-control
 #      - openvswitch
   neutron-netns-cleanup:
-    command: snap-openstack launch neutron-netns-cleanup
+    command: /usr/bin/env snap-openstack launch neutron-netns-cleanup
 #    plugs:
 #      - network
 #      - network-control
   neutron-db-manage:
-    command: snap-openstack launch neutron-db-manage
+    command: /usr/bin/env snap-openstack launch neutron-db-manage
 #    plugs:
 #      - network
 
   # Glance
   glance-api:
-    command: snap-openstack launch glance-api
+    command: /usr/bin/env snap-openstack launch glance-api
     daemon: simple
 #    plugs:
 #      - network-bind
   registry:
-    command: snap-openstack launch glance-registry
+    command: /usr/bin/env snap-openstack launch glance-registry
     daemon: simple
 #    plugs:
 #      - network
 #      - network-bind
   glance-manage:
-    command: snap-openstack launch glance-manage
+    command: /usr/bin/env snap-openstack launch glance-manage
 #    plugs:
 #      - network
 
   # Openstack Shared Services
   nginx:
-    command: snap-openstack launch nginx
+    command: /usr/bin/env snap-openstack launch nginx
     daemon: forking
 #    plugs:
 #      - network-bind
@@ -221,13 +224,13 @@ apps:
 
   # Libvirt/Qemu
   libvirtd:
-    command: libvirtd
+    command: /usr/bin/env libvirtd
     daemon: simple
   virtlogd:
-    command: virtlogd
+    command: /usr/bin/env virtlogd
     daemon: simple
   virsh:
-    command: virsh
+    command: /usr/bin/env virsh
 
   # MySQL
   mysqld:
@@ -245,59 +248,59 @@ apps:
 
   # RabbitMQ
   rabbitmq-server:
-    command: rabbitmq-server
+    command: /usr/bin/env rabbitmq-server
     daemon: simple
 #    plugs:
 #      - network-bind
     environment:
       HOME: $SNAP_COMMON/lib/rabbitmq
   rabbitmqctl:
-    command: rabbitmqctl
+    command: /usr/bin/env rabbitmqctl
 #    plugs:
 #      - network
     environment:
       HOME: $SNAP_COMMON/lib/rabbitmq
   rabbitmq-plugins:
-    command: rabbitmq-plugins
+    command: /usr/bin/env rabbitmq-plugins
     environment:
       HOME: $SNAP_COMMON/lib/rabbitmq
 
   # Memcached
   memcached:
-    command: memcached -u root -v
+    command: /usr/bin/env memcached -u root -v
     daemon: simple
 #    plugs:
 #      - network-bind
 
   # Cinder
   cinder-uwsgi:
-    command: snap-openstack launch cinder-uwsgi
+    command: /usr/bin/env snap-openstack launch cinder-uwsgi
 #    daemon: simple
 #    plugs:
 #      - network-bind
   cinder-backup:
-    command: snap-openstack launch cinder-backup
+    command: /usr/bin/env snap-openstack launch cinder-backup
 #    daemon: simple
 #    plugs:
 #      - network
   cinder-manage:
-    command: snap-openstack launch cinder-manage
+    command: /usr/bin/env snap-openstack launch cinder-manage
 #    plugs:
 #      - network
   cinder-scheduler:
-    command: snap-openstack launch cinder-scheduler
+    command: /usr/bin/env snap-openstack launch cinder-scheduler
 #    daemon: simple
 #    plugs:
 #      - network
   cinder-volume:
-    command: snap-openstack launch cinder-volume
+    command: /usr/bin/env snap-openstack launch cinder-volume
 #    daemon: simple
 #    plugs:
 #      - network
 
   # Horizon
   horizon-uwsgi:
-    command: snap-openstack launch horizon-uwsgi
+    command: /usr/bin/env snap-openstack launch horizon-uwsgi
     daemon: simple
 #    plugs:
 #      - network-bind
@@ -305,13 +308,13 @@ apps:
   # Utility to launch a vm. Creates security groups, floating ips,
   # and other necessities as well.
   launch:
-    command: microstack_launch
+    command: /usr/bin/env microstack_launch
 #    plugs:
 #      - network
 
   # Cluster
   cluster-server:
-    command: flask run -p 10002 --host=0.0.0.0 # TODO: run as a uwsgi app
+    command: /usr/bin/env flask run -p 10002 --host=0.0.0.0 # TODO: run as a uwsgi app
     daemon: simple
     environment:
       LC_ALL: C.UTF-8  # Makes flask happy
@@ -319,7 +322,7 @@ apps:
       FLASK_APP: ${SNAP}/lib/python3.6/site-packages/cluster/daemon.py
 
   join:
-    command: python3 ${SNAP}/lib/python3.6/site-packages/cluster/client.py
+    command: /usr/bin/env python3 ${SNAP}/lib/python3.6/site-packages/cluster/client.py
 
 
 parts:
@@ -357,7 +360,7 @@ parts:
       - http://tarballs.openstack.org/neutron/neutron-stable-stein.tar.gz
       - http://tarballs.openstack.org/glance/glance-stable-stein.tar.gz
       - http://tarballs.openstack.org/cinder/cinder-stable-stein.tar.gz
-      - http://tarballs.openstack.org/horizon/horizon-stable-stein.tar.gz
+      - horizon
       - python-cinderclient
       - python-openstackclient
       - python-swiftclient
@@ -576,6 +579,9 @@ parts:
     after:
       - openstack-projects
       - uca-sources
+    build-environment:
+      # Workaround for https://bugs.launchpad.net/snapcraft/+bug/1860766
+      - LD_LIBRARY_PATH: $SNAPCRAFT_PART_INSTALL/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/ceph:$SNAPCRAFT_PART_INSTALL/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio:$LD_LIBRARY_PATH
     stage-packages:
       - seabios
       - ipxe-qemu
@@ -822,6 +828,9 @@ parts:
     python-version: python3
     requirements:
       - requirements.txt
+    stage-packages:
+      # Workaround for https://bugs.launchpad.net/snapcraft/+bug/1860768
+      - petname
     source: tools/launch
 
   # Clustering client and server
