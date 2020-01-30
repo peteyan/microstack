@@ -176,8 +176,7 @@ apps:
   ovs-vswitchd:
     command: ovs-wrapper $SNAP/share/openvswitch/scripts/ovs-ctl --no-ovsdb-server --no-monitor --system-id=random start
     stop-command: ovs-wrapper $SNAP/share/openvswitch/scripts/ovs-ctl --no-ovsdb-server stop
-    passthrough:
-      after: [ovsdb-server]
+    after: [ovsdb-server]
     daemon: forking
 #    plugs:
 #      - network
@@ -217,8 +216,7 @@ apps:
   external-bridge:
     command: wait-on-init setup-br-ex
     daemon: oneshot
-    passthrough:
-      after: [ovs-vswitchd]
+    after: [ovs-vswitchd]
 #    plugs:
 #      - network
 
