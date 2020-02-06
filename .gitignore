@@ -10,6 +10,7 @@ prime/
 snap/.snapcraft
 stage/
 dump.tar.gz
+squashfs-root
 
 # Emacs
 *~

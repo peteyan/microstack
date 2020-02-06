@@ -5,172 +5,206 @@ summary: OpenStack on your laptop.
 description: |
   Microstack gives you an easy way to develop and test OpenStack
   workloads on your laptop.
-grade: stable
-confinement: classic
+grade: devel
+confinement: strict
 environment:
-  # Edit the following lines with tools/update_path.py
-  LD_LIBRARY_PATH: $SNAP/lib:$SNAP/lib/$SNAPCRAFT_ARCH_TRIPLET:$SNAP/usr/lib:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio
-  PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
   LC_ALL: C
+  PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
   OS_PLACEMENT_CONFIG_DIR: $SNAP/etc/nova/
+
+layout:
+  # Libvirt/Qemu libs
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/ceph:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/ceph
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/qemu:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/qemu
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio
+  /usr/lib/libvirt:
+    bind: $SNAP/usr/lib/libvirt
+  /usr/share/libvirt:
+    bind: $SNAP/usr/share/libvirt
+  /usr/share/qemu:
+    bind: $SNAP/usr/share/qemu
+  # Keystone really wants to look here for its fernet keys for some reason
+  /etc/keystone/fernet-keys:
+    bind: $SNAP_COMMON/fernet-keys
 
 apps:
   # Openstack
   openstack:
     command: openstack-wrapper openstack
-#    plugs:
-#      - network
+    plugs:
+      - network
 
   # OpenStack Service Configuration
   init:
-    # This and other instances of /usr/bin/env are workarounds for
-    # https://bugs.launchpad.net/snapd/+bug/1860369. We force snapcraft
-    # to put us in a wrapper.
-    command: /usr/bin/env microstack_init
-#    plugs:
-#      - network
+    command: microstack_init
+    plugs:
+      - network
+      - mount-observe  # rabbitmq-ctl
+      - network-bind  # rabbitmq-ctl?
+      - firewall-control  # iptables
+      - network-control  # iptables
+      - ssh-keys # write ssh key
+      - system-observe  # rabbitmq ?
+      - hardware-observe  # rabbitmq ?
 
   remove:
-    command: /usr/bin/env microstack_remove
+    command: microstack_remove
 
   # Keystone
   keystone-uwsgi:
-    command: /usr/bin/env snap-openstack launch keystone-uwsgi
+    command: snap-openstack launch keystone-uwsgi
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network-bind
+      - network
+      - network-control
   keystone-manage:
-    command: /usr/bin/env snap-openstack launch keystone-manage
-#    plugs:
-#      - network
+    command: snap-openstack launch keystone-manage
+    plugs:
+      - network
 
   # Nova
   nova-uwsgi:
-    command: /usr/bin/env snap-openstack launch nova-uwsgi
+    command: snap-openstack launch nova-uwsgi
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
+      - network-control
   nova-api:
-    command: /usr/bin/env snap-openstack launch nova-api-os-compute
+    command: snap-openstack launch nova-api-os-compute
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
+      - network-control
   nova-conductor:
-    command: /usr/bin/env snap-openstack launch nova-conductor
+    command: snap-openstack launch nova-conductor
     daemon: simple
-#    plugs:
-#      - network
+    plugs:
+      - network
+      - network-control
   nova-scheduler:
-    command: /usr/bin/env snap-openstack launch nova-scheduler
+    command: snap-openstack launch nova-scheduler
     daemon: simple
-#    plugs:
-#      - network
+    plugs:
+      - network
+      - network-bind
+      - network-control
   nova-compute:
-    command: /usr/bin/env snap-openstack launch nova-compute
+    command: snap-openstack launch nova-compute
     daemon: simple
-#    plugs:
-#      - network-bind
-#      - network-control
-#      - firewall-control
-#      - hardware-observe
-#      - libvirt
-#      - openvswitch
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - firewall-control
+      - hardware-observe
   nova-api-metadata:
-    command: /usr/bin/env snap-openstack launch nova-api-metadata
+    command: snap-openstack launch nova-api-metadata
     daemon: simple
-#    plugs:
-#      - network-bind
-#      - firewall-control
+    plugs:
+      - network
+      - network-bind
+      - firewall-control
   nova-manage:
-    command: /usr/bin/env snap-openstack launch nova-manage
-#    plugs:
-#      - network
+    command: snap-openstack launch nova-manage
+    plugs:
+      - network
 
   # Neutron
   neutron-api:
-    command: /usr/bin/env snap-openstack launch neutron-server
+    command: snap-openstack launch neutron-server
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
+      - network-control
   neutron-openvswitch-agent:
-    command: /usr/bin/env snap-openstack launch neutron-openvswitch-agent
+    command: snap-openstack launch neutron-openvswitch-agent
     daemon: simple
-#    plugs:
-#      - network-bind
-#      - network-control
-#      - network-observe
-#      - firewall-control
-#      - process-control
-#      - system-observe
-#      - openvswitch
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - network-observe
+      - firewall-control
+      - process-control
+      - system-observe
   neutron-l3-agent:
-    command: /usr/bin/env snap-openstack launch neutron-l3-agent
+    command: snap-openstack launch neutron-l3-agent
     daemon: simple
-#    plugs:
-#      - network-bind
-#      - network-control
-#      - network-observe
-#      - firewall-control
-#      - process-control
-#      - system-observe
-#      - openvswitch
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - network-observe
+      - firewall-control
+      - process-control
+      - system-observe
   neutron-dhcp-agent:
-    command: /usr/bin/env snap-openstack launch neutron-dhcp-agent
+    command: snap-openstack launch neutron-dhcp-agent
     daemon: simple
-#    plugs:
-#      - network
-#      - network-bind
-#      - network-control
-#      - network-observe
-#      - process-control
-#      - system-observe
-#      - openvswitch
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - network-observe
+      - process-control
+      - system-observe
   neutron-metadata-agent:
-    command: /usr/bin/env snap-openstack launch neutron-metadata-agent
+    command: snap-openstack launch neutron-metadata-agent
     daemon: simple
-#    plugs:
-#      - network
-#      - network-bind
-#      - network-control
+    plugs:
+      - network
+      - network-bind
+      - network-control
   neutron-ovs-cleanup:
-    command: /usr/bin/env snap-openstack launch neutron-ovs-cleanup
-#    plugs:
-#      - network
-#      - network-control
-#      - openvswitch
+    command: snap-openstack launch neutron-ovs-cleanup
+    plugs:
+      - network
+      - network-control
   neutron-netns-cleanup:
-    command: /usr/bin/env snap-openstack launch neutron-netns-cleanup
-#    plugs:
-#      - network
-#      - network-control
+    command: snap-openstack launch neutron-netns-cleanup
+    plugs:
+      - network
+      - network-control
   neutron-db-manage:
-    command: /usr/bin/env snap-openstack launch neutron-db-manage
-#    plugs:
-#      - network
+    command: snap-openstack launch neutron-db-manage
+    plugs:
+      - network
 
   # Glance
   glance-api:
-    command: /usr/bin/env snap-openstack launch glance-api
+    command: snap-openstack launch glance-api
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
+      - mount-observe
+      - network-control
   registry:
-    command: /usr/bin/env snap-openstack launch glance-registry
+    command: snap-openstack launch glance-registry
     daemon: simple
-#    plugs:
-#      - network
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
+      - network-control
   glance-manage:
-    command: /usr/bin/env snap-openstack launch glance-manage
-#    plugs:
-#      - network
+    command: snap-openstack launch glance-manage
+    plugs:
+      - network
 
   # Openstack Shared Services
   nginx:
-    command: /usr/bin/env snap-openstack launch nginx
+    command: snap-openstack launch nginx
     daemon: forking
-#    plugs:
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
 
   # Openvswitch
   ovs-vswitchd:
@@ -178,149 +212,174 @@ apps:
     stop-command: ovs-wrapper $SNAP/share/openvswitch/scripts/ovs-ctl --no-ovsdb-server stop
     after: [ovsdb-server]
     daemon: forking
-#    plugs:
-#      - network
-#      - network-bind
-#      - network-control
-#      - openvswitch-support
-#      - process-control
-#      - system-trace
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - openvswitch-support
+      - process-control
+      - system-trace
   ovsdb-server:
     command: ovs-wrapper $SNAP/share/openvswitch/scripts/ovs-ctl --no-ovs-vswitchd --no-monitor --system-id=random start
     stop-command: ovs-wrapper $SNAP/share/openvswitch/scripts/ovs-ctl --no-ovs-vswitchd stop
     daemon: forking
-#    plugs:
-#      - network
-#      - network-bind
-#      - network-control
-#      - openvswitch-support
-#      - process-control
-#      - system-trace
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - openvswitch-support
+      - process-control
+      - system-trace
   ovs-vsctl:
-    command: ovs-wrapper $SNAP/bin/ovs-vsctl
-#    plugs:
-#      - network
+    command: ovs-wrapper bin/ovs-vsctl
+    plugs:
+      - network
   ovs-appctl:
-    command: ovs-wrapper $SNAP/bin/ovs-appctl
-#    plugs:
-#      - network
+    command: ovs-wrapper bin/ovs-appctl
+    plugs:
+      - network
   ovs-ofctl:
-    command: ovs-wrapper $SNAP/bin/ovs-ofctl
-#    plugs:
-#      - network
+    command: ovs-wrapper bin/ovs-ofctl
+    plugs:
+      - network
   ovs-dpctl:
-    command: ovs-wrapper $SNAP/bin/ovs-dpctl
-#    plugs:
-#      - network
+    command: ovs-wrapper bin/ovs-dpctl
+    plugs:
+      - network
 
   external-bridge:
     command: wait-on-init setup-br-ex
     daemon: oneshot
     after: [ovs-vswitchd]
-#    plugs:
-#      - network
+    plugs:
+      - network
+      - network-control
 
   # Libvirt/Qemu
   libvirtd:
-    command: /usr/bin/env libvirtd
+    command: usr/sbin/libvirtd --pid $SNAP_DATA/libvirt.pid
     daemon: simple
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - netlink-connector
+      - netlink-audit
   virtlogd:
-    command: /usr/bin/env virtlogd
+    command: virtlogd --pid $SNAP_DATA/virtlogd.pid
     daemon: simple
+    plugs:
+      - network
+      - network-bind
+      - network-control
   virsh:
-    command: /usr/bin/env virsh
+    command: virsh
 
   # MySQL
   mysqld:
     command: mysql-start-server
     daemon: simple
-#    plugs:
-#      - process-control
-#      - network
-#      - network-bind
+    plugs:
+      - process-control
+      - network
+      - network-bind
   mysql:
     command: mysql-start-client
-#    plugs:
-#      - process-control
-#      - network
+    plugs:
+      - process-control
+      - network
 
   # RabbitMQ
   rabbitmq-server:
-    command: /usr/bin/env rabbitmq-server
+    command: rabbitmq-server
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network-bind
+      - network
+      - mount-observe
+      - log-observe
     environment:
       HOME: $SNAP_COMMON/lib/rabbitmq
   rabbitmqctl:
-    command: /usr/bin/env rabbitmqctl
-#    plugs:
-#      - network
+    command: rabbitmqctl
+    plugs:
+      - network
+      - mount-observe
     environment:
       HOME: $SNAP_COMMON/lib/rabbitmq
   rabbitmq-plugins:
-    command: /usr/bin/env rabbitmq-plugins
+    command: rabbitmq-plugins
     environment:
       HOME: $SNAP_COMMON/lib/rabbitmq
 
   # Memcached
   memcached:
-    command: /usr/bin/env memcached -u root -v
+    command: memcached -u root -v
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
 
   # Cinder
   cinder-uwsgi:
-    command: /usr/bin/env snap-openstack launch cinder-uwsgi
-#    daemon: simple
-#    plugs:
-#      - network-bind
+    command: snap-openstack launch cinder-uwsgi
+    daemon: simple
+    plugs:
+      - network
+      - network-bind
   cinder-backup:
-    command: /usr/bin/env snap-openstack launch cinder-backup
-#    daemon: simple
-#    plugs:
-#      - network
+    command: snap-openstack launch cinder-backup
+    daemon: simple
+    plugs:
+      - network
+      - mount-observe
   cinder-manage:
-    command: /usr/bin/env snap-openstack launch cinder-manage
-#    plugs:
-#      - network
+    command: snap-openstack launch cinder-manage
+    plugs:
+      - network
+      - mount-observe
   cinder-scheduler:
-    command: /usr/bin/env snap-openstack launch cinder-scheduler
-#    daemon: simple
-#    plugs:
-#      - network
+    command: snap-openstack launch cinder-scheduler
+    daemon: simple
+    plugs:
+      - network
+      - mount-observe
   cinder-volume:
-    command: /usr/bin/env snap-openstack launch cinder-volume
-#    daemon: simple
-#    plugs:
-#      - network
+    command: snap-openstack launch cinder-volume
+    daemon: simple
+    plugs:
+      - network
+      - mount-observe
 
   # Horizon
   horizon-uwsgi:
-    command: /usr/bin/env snap-openstack launch horizon-uwsgi
+    command: snap-openstack launch horizon-uwsgi
     daemon: simple
-#    plugs:
-#      - network-bind
+    plugs:
+      - network
+      - network-bind
 
   # Utility to launch a vm. Creates security groups, floating ips,
   # and other necessities as well.
   launch:
-    command: /usr/bin/env microstack_launch
-#    plugs:
-#      - network
+    command: microstack_launch
+    plugs:
+      - network
 
   # Cluster
   cluster-server:
-    command: /usr/bin/env flask run -p 10002 --host=0.0.0.0 # TODO: run as a uwsgi app
+    command: flask run -p 10002 --host 0.0.0.0 # TODO: run as a uwsgi app
     daemon: simple
     environment:
       LC_ALL: C.UTF-8  # Makes flask happy
       LANG: C.UTF-8  # Makes flask happy
-      FLASK_APP: ${SNAP}/lib/python3.6/site-packages/cluster/daemon.py
+      FLASK_APP: $SNAP/lib/python3.6/site-packages/cluster/daemon.py
+    plugs:
+      - network
+      - network-bind
 
   join:
-    command: /usr/bin/env python3 ${SNAP}/lib/python3.6/site-packages/cluster/client.py
+    command: python3 $SNAP/lib/python3.6/site-packages/cluster/client.py
 
 
   filebeat:
@@ -357,9 +416,10 @@ parts:
     python-version: python3
     after:
       - uca-sources
+      - libvirt
       - patches
     constraints:
-      - https://raw.githubusercontent.com/openstack/requirements/stable/stein/upper-constraints.txt
+      - ${SNAPCRAFT_STAGE}/patches/upper-constraints.txt
     source: http://tarballs.openstack.org/keystone/keystone-stable-stein.tar.gz
     python-packages:
       - libvirt-python
@@ -375,18 +435,23 @@ parts:
       - python-cinderclient
       - python-openstackclient
       - python-swiftclient
+      # Workaround for https://bugs.launchpad.net/snapcraft/+bug/1860768
+      # This is a package required for the launch script, per the bug
+      # above. We include it here so that we don't try to rebuild dist
+      # stuff:
+      - petname
     build-packages:
       - gcc
       - git
       - libffi-dev
       - libssl-dev
-      - libvirt-dev
       - libxml2-dev
       - libxslt1-dev
     stage-packages:
       - conntrack
       - coreutils
       - haproxy
+      - libmagic1
       - python3-dev
       - python3-systemd
     override-prime: |
@@ -401,14 +466,11 @@ parts:
           --input "$patch"
         echo
       done
-      # Uncomment the below line for better python-libvirt debugging output.
-      # patch --batch --forward --strip 1 --input ../project/patches/nova/nova_log_error.patch
       # Now that everything is built, let's disable user site-packages
       # as stated in PEP-0370
       sed -i usr/lib/python3.6/site.py -e 's/^ENABLE_USER_SITE = None$/ENABLE_USER_SITE = False/'
-      # This is the last step, let's now compile all our pyc files.
-      # Ignore errors due to syntax issues in foobar python 2.
-      ./usr/bin/python3.6 -m compileall . || true
+      # Uncomment the below line for better python-libvirt debugging output.
+      # patch --batch --forward --strip 1 --input ../project/patches/nova/nova_log_error.patch
     organize:
       lib/python3.6/site-packages/openstack_dashboard/local/local_settings.py.example: lib/python3.6/site-packages/openstack_dashboard/local/local_settings.py
 
@@ -582,13 +644,46 @@ parts:
       done
       snapcraftctl build
 
+  nginx:
+    source: http://www.nginx.org/download/nginx-1.13.0.tar.gz
+    plugin: autotools
+    after:
+      - patches
+    configflags:
+      - --prefix=/usr
+      - "--http-log-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/log/nginx-access.log"
+      - "--error-log-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/log/nginx-error.log"
+      - "--lock-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/lock/nginx.lock"
+      - "--pid-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/run/nginx.pid"
+      - "--http-client-body-temp-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/lib/nginx_client_body"
+      - "--http-proxy-temp-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/lib/nginx_proxy"
+      - "--http-fastcgi-temp-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/lib/nginx_fastcgi"
+      - "--http-uwsgi-temp-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/lib/nginx_uwsgi"
+      - "--http-scgi-temp-path=/var/snap/$SNAPCRAFT_PROJECT_NAME/common/lib/nginx_scgi"
+      - --with-http_ssl_module
+    build-packages:
+      - libpcre3-dev
+      - libssl-dev
+      - python-six
+    override-build: |
+      # Apply patches
+      for patch in ${SNAPCRAFT_STAGE}/patches/nginx/*.patch; do
+        echo "Applying $(basename "$patch") ..."
+        patch \
+          --batch \
+          --forward \
+          --strip 1 \
+          --input "$patch"
+        echo
+      done
+      snapcraftctl build
+
   # libvirt/qemu
   qemu:
     source: .
     source-subdir: qemu-3.1+dfsg
     plugin: autotools
     after:
-      - openstack-projects
       - uca-sources
     build-environment:
       # Workaround for https://bugs.launchpad.net/snapcraft/+bug/1860766
@@ -596,6 +691,7 @@ parts:
     stage-packages:
       - seabios
       - ipxe-qemu
+      - freeglut3 # provides libglut.so.3
       - try:
         - libnuma1
         - libspice-server1
@@ -628,6 +724,7 @@ parts:
       - libvorbis0a
       - libvorbisenc2
       - libx11-6
+      - libxi6
       - libxau6
       - libxcb1
       - libxdmcp6
@@ -668,7 +765,7 @@ parts:
       - gcc
     configflags:
       - --disable-blobs
-      - --prefix=/snap/$SNAPCRAFT_PROJECT_NAME/current
+      - --prefix=/usr
       - --localstatedir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common
       - --sysconfdir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common
       - --firmwarepath=/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/share/seabios:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/share/qemu:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/lib/ipxe/qemu
@@ -677,18 +774,12 @@ parts:
       - --enable-system
       - --target-list=x86_64-softmmu
     override-build: |
-      # I think that snapcraft is creating this dir, which breaks the below.xo
+      # I think that snapcraft is creating this dir, which breaks the below.
       rm -Rf qemu-3.1+dfsg
       apt source qemu
       # Fix issue with running apt source as root
       dpkg-source --before-build qemu-3.1+dfsg
       snapcraftctl build
-    organize:
-      # Hack to shift installed qemu back to root of snap
-      # required to ensure that pathing to files etc works at
-      # runtime
-      # * is not used to avoid directory merge conflicts
-      snap/microstack/current/: ./
 
   kvm-support:
     plugin: nil
@@ -699,7 +790,6 @@ parts:
     source: .
     source-subdir: libvirt-5.0.0
     after:
-      - openstack-projects
       - qemu
       - uca-sources
     plugin: autotools
@@ -730,6 +820,7 @@ parts:
     stage-packages:
     - dmidecode
     - dnsmasq
+    - iptables
     - libxml2
     - libyajl2
     - try: [libnuma1]
@@ -755,7 +846,7 @@ parts:
     - --without-storage-rbd
     - --without-storage-lvm
     - --without-selinux
-    - --prefix=/snap/$SNAPCRAFT_PROJECT_NAME/current
+    - --prefix=/usr
     - --localstatedir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common
     - --sysconfdir=/var/snap/$SNAPCRAFT_PROJECT_NAME/common
     - DNSMASQ=/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/sbin/dnsmasq
@@ -770,12 +861,6 @@ parts:
       # Fix issue with running apt source as root
       dpkg-source --before-build libvirt-5.0.0
       snapcraftctl build
-    organize:
-      # Hack to shift installed libvirt back to root of snap
-      # required to ensure that pathing to files etc works at
-      # runtime
-      # * is not used to avoid directory merge conflicts
-      snap/microstack/current/: ./
 
   # MySQL
   mysql-server:
@@ -832,6 +917,11 @@ parts:
     requirements:
       - requirements.txt  # Relative to source path, so tools/init/req...txt
     source: tools/init
+    override-build: |
+      # Hack to avoid conflict between openstack-projects'
+      # site-customize and this one.
+      snapcraftctl build
+      rm $SNAPCRAFT_PART_INSTALL/usr/lib/python3.6/sitecustomize.py
 
   # Launch script
   launch:
@@ -839,10 +929,12 @@ parts:
     python-version: python3
     requirements:
       - requirements.txt
-    stage-packages:
-      # Workaround for https://bugs.launchpad.net/snapcraft/+bug/1860768
-      - petname
     source: tools/launch
+    override-build: |
+      # Hack to avoid conflict between openstack-projects'
+      # site-customize and this one.
+      snapcraftctl build
+      rm $SNAPCRAFT_PART_INSTALL/usr/lib/python3.6/sitecustomize.py
 
   # Clustering client and server
   cluster:
@@ -850,7 +942,14 @@ parts:
     python-version: python3
     requirements:
       - requirements.txt
+    constraints:
+      - ${SNAPCRAFT_STAGE}/patches/upper-constraints.txt
     source: tools/cluster
+    override-build: |
+      # Hack to avoid conflict between openstack-projects'
+      # site-customize and this one.
+      snapcraftctl build
+      rm $SNAPCRAFT_PART_INSTALL/usr/lib/python3.6/sitecustomize.py
 
   ### LMA stack ###
   filebeat:
@@ -910,3 +1009,12 @@ parts:
     source: ./checks
     organize:
       check_systemd.py: usr/lib/nagios/plugins/check_systemd.py
+
+
+hooks:
+  install:
+    plugs: [network]
+  configure:
+    plugs: [network]
+  post-refresh:
+    plugs: [network]

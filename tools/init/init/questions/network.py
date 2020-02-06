@@ -50,3 +50,10 @@ class IpForwarding(Question):
         log.info('Setting up ipv4 forwarding...')
 
         check('sysctl', 'net.ipv4.ip_forward=1')
+
+    def no(self, answer: str) -> None:
+        """This question doesn't actually work in a strictly confined snap, so
+        we default to the no and a noop for now.
+
+        """
+        pass

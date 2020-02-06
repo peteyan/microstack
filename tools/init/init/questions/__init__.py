@@ -27,8 +27,8 @@ import json
 from time import sleep
 from os import path
 
-from init.shell import (check, call, check_output, shell, sql, nc_wait,
-                        log_wait, restart, download)
+from init.shell import (check, call, check_output, sql, nc_wait, log_wait,
+                        restart, download)
 from init.config import Env, log
 from init.questions.question import Question
 from init.questions import clustering, network, uninstall  # noqa F401
@@ -104,7 +104,7 @@ class Clustering(Question):
         # Turn off cluster server
         # TODO: it would be more secure to reverse this -- only enable
         # to service if we are doing clustering.
-        check('systemctl', 'disable', 'snap.microstack.cluster-server')
+        check('snapctl', 'stop', '--disable', 'microstack.cluster-server')
 
 
 class ConfigQuestion(Question):
@@ -173,6 +173,10 @@ class NetworkSettings(Question):
 
     def yes(self, answer):
         log.info('Configuring networking ...')
+
+        # OpenvSwitch services may not have started up properly
+        restart('ovsdb-server')
+        restart('ovs-vswitchd')
 
         network.ExtGateway().ask()
         network.ExtCidr().ask()
@@ -267,6 +271,7 @@ class RabbitMq(Question):
     config_key = 'config.services.control-plane'
 
     def _wait(self) -> None:
+        restart('rabbitmq-server')  # Restart server for plugs
         rabbit_port = check_output(
             'snapctl', 'get', 'config.network.ports.rabbit')
         nc_wait(_env['control_ip'], rabbit_port)
@@ -279,9 +284,7 @@ class RabbitMq(Question):
         (actions may have already been run, in which case we fail silently).
         """
         # Configure RabbitMQ
-        call('microstack.rabbitmqctl', 'add_user', 'openstack', 'rabbitmq')
-        shell(
-            'microstack.rabbitmqctl set_permissions openstack ".*" ".*" ".*"')
+        check('{SNAP}/bin/setup-rabbit'.format(**_env))
 
     def yes(self, answer: str) -> None:
         log.info('Waiting for RabbitMQ to start ...')
@@ -293,7 +296,7 @@ class RabbitMq(Question):
 
     def no(self, answer: str):
         log.info('Disabling local rabbit ...')
-        check('systemctl', 'disable', 'snap.microstack.rabbitmq-server')
+        check('snapctl', 'stop', '--disable', 'microstack.rabbitmq-server')
 
 
 class DatabaseSetup(Question):
@@ -361,7 +364,7 @@ class DatabaseSetup(Question):
               '--keystone-group', 'root')
         check('snap-openstack', 'launch', 'keystone-manage', 'db_sync')
 
-        restart('keystone-*')
+        restart('keystone-uwsgi')
 
         log.info('Bootstrapping Keystone ...')
         self._bootstrap()
@@ -379,7 +382,7 @@ class DatabaseSetup(Question):
         check('snapctl', 'set', 'database.ready=true')
 
         log.info('Disabling local MySQL ...')
-        check('systemctl', 'disable', 'snap.microstack.mysqld')
+        check('snapctl', 'stop', '--disable', 'microstack.mysqld')
 
 
 class NovaHypervisor(Question):
@@ -405,7 +408,7 @@ class NovaHypervisor(Question):
 
     def no(self, answer):
         log.info('Disabling nova compute service ...')
-        check('systemctl', 'disable', 'snap.microstack.nova-compute')
+        check('snapctl', 'stop', '--disable', 'microstack.nova-compute')
 
 
 class NovaControlPlane(Question):
@@ -465,10 +468,6 @@ class NovaControlPlane(Question):
         # list automagically.
         for service in [
                 'microstack.nova-api',
-                'microstack.nova-api-metadata',
-                'microstack.nova-conductor',
-                'microstack.nova-scheduler',
-                'microstack.nova-uwsgi',
         ]:
             check('snapctl', 'start', service)
 
@@ -488,7 +487,16 @@ class NovaControlPlane(Question):
 
         check('snap-openstack', 'launch', 'nova-manage', 'db', 'sync')
 
-        restart('nova-*')
+        restart('nova-api')
+        restart('nova-compute')
+
+        for service in [
+                'microstack.nova-api-metadata',
+                'microstack.nova-conductor',
+                'microstack.nova-scheduler',
+                'microstack.nova-uwsgi',
+        ]:
+            check('snapctl', 'start', service)
 
         nc_wait(_env['compute_ip'], '8774')
 
@@ -501,13 +509,13 @@ class NovaControlPlane(Question):
         log.info('Disabling nova control plane services ...')
 
         for service in [
-                'snap.microstack.nova-uwsgi',
-                'snap.microstack.nova-api',
-                'snap.microstack.nova-conductor',
-                'snap.microstack.nova-scheduler',
-                'snap.microstack.nova-api-metadata']:
+                'microstack.nova-uwsgi',
+                'microstack.nova-api',
+                'microstack.nova-conductor',
+                'microstack.nova-scheduler',
+                'microstack.nova-api-metadata']:
 
-            check('systemctl', 'disable', service)
+            check('snapctl', 'stop', '--disable', service)
 
 
 class NeutronControlPlane(Question):
@@ -545,7 +553,14 @@ class NeutronControlPlane(Question):
         check('snap-openstack', 'launch', 'neutron-db-manage', 'upgrade',
               'head')
 
-        restart('neutron-*')
+        for service in [
+                'microstack.neutron-api',
+                'microstack.neutron-dhcp-agent',
+                'microstack.neutron-l3-agent',
+                'microstack.neutron-metadata-agent',
+                'microstack.neutron-openvswitch-agent',
+        ]:
+            check('snapctl', 'restart', service)
 
         nc_wait(_env['control_ip'], '9696')
 
@@ -587,12 +602,12 @@ class NeutronControlPlane(Question):
 
         # Disable the other services.
         for service in [
-                'snap.microstack.neutron-api',
-                'snap.microstack.neutron-dhcp-agent',
-                'snap.microstack.neutron-metadata-agent',
-                'snap.microstack.neutron-l3-agent',
+                'microstack.neutron-api',
+                'microstack.neutron-dhcp-agent',
+                'microstack.neutron-metadata-agent',
+                'microstack.neutron-l3-agent',
         ]:
-            check('systemctl', 'disable', service)
+            check('snapctl', 'stop', '--disable', service)
 
 
 class GlanceSetup(Question):
@@ -652,7 +667,8 @@ class GlanceSetup(Question):
 
         check('snap-openstack', 'launch', 'glance-manage', 'db_sync')
 
-        restart('glance*')
+        restart('glance-api')
+        restart('registry')
 
         nc_wait(_env['compute_ip'], '9292')
 
@@ -661,37 +677,8 @@ class GlanceSetup(Question):
         self._fetch_cirros()
 
     def no(self, answer):
-        check('systemctl', 'disable', 'snap.microstack.glance-api')
-        check('systemctl', 'disable', 'snap.microstack.registry')
-
-
-class KeyPair(Question):
-    """Create a keypair for ssh access to instances.
-
-    TODO: split the asking from executing of questions, as ask about
-    this up front. (This needs to run at the end, but for user
-    experience reasons, we really want to ask all the non auto
-    questions at the beginning.)
-    """
-    _type = 'string'
-    config_key = 'config.credentials.key-pair'
-
-    def yes(self, answer: str) -> None:
-
-        if 'microstack' not in check_output('openstack', 'keypair', 'list'):
-            user = check_output('logname')
-            home = '/home/{}'.format(user)  # TODO make more portable!
-
-            log.info('Creating microstack keypair (~/.ssh/{})'.format(answer))
-            check('mkdir', '-p', '{home}/.ssh'.format(home=home))
-            check('chmod', '700', '{home}/.ssh'.format(home=home))
-            id_ = check_output('openstack', 'keypair', 'create', 'microstack')
-            id_path = '{home}/.ssh/{answer}'.format(home=home, answer=answer)
-
-            with open(id_path, 'w') as file_:
-                file_.write(id_)
-            check('chmod', '600', id_path)
-            check('chown', '{}:{}'.format(user, user), id_path)
+        check('snapctl', 'stop', '--disable', 'microstack.glance-api')
+        check('snapctl', 'stop', '--disable', 'microstack.registry')
 
 
 class SecurityRules(Question):
@@ -736,7 +723,8 @@ class PostSetup(Question):
         log.info('restarting libvirt and virtlogd ...')
         # This fixes an issue w/ logging not getting set.
         # TODO: fix issue.
-        restart('*virt*')
+        restart('libvirtd')
+        restart('virtlogd')
 
         # Start horizon
         check('snapctl', 'start', 'microstack.horizon-uwsgi')

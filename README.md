@@ -29,6 +29,11 @@ At this time you can install from the `--beta` or `--edge` snap channels:
 
     sudo snap install microstack --classic --beta
 
+The edge channel is moving toward a strictly confined snap. At this time, it
+must be installed in devmode:
+
+    sudo snap install microstack --devmode --edge
+
 ## Initialisation
 
 Initialisation will set up databases, networks, flavors, an SSH keypair, a

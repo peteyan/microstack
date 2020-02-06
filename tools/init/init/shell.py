@@ -94,29 +94,6 @@ def call(*args: List[str], env: Dict = _env) -> bool:
     return not proc.returncode
 
 
-def shell(cmd: str, env: Dict = _env) -> int:
-    """Execute a command, using the actual bourne again shell.
-
-    Use this in cases where it is difficult to compose a comma
-    separate list that will get parsed into a succesful bash
-    command. (E.g., your bash command contains an argument like ".*"
-    ".*" ".*")
-
-    :param cmd: the command to run.
-    :param env: defaults to our Env singleton; can be overriden.
-
-    """
-    proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, bufsize=1,
-                            universal_newlines=True, shell=True)
-    for line in iter(proc.stdout.readline, ''):
-        log.debug(line)
-    proc.wait()
-    if proc.returncode:
-        raise subprocess.CalledProcessError(proc.returncode, cmd)
-    return proc.returncode
-
-
 def sql(cmd: str) -> None:
     """Execute some SQL!
 
@@ -159,7 +136,7 @@ def restart(service: str) -> None:
                     e.g. *rabbit*
 
     """
-    check('systemctl', 'restart', 'snap.microstack.{}'.format(service))
+    check('snapctl', 'restart', 'microstack.{}'.format(service))
 
 
 def disable(service: str) -> None:
@@ -169,8 +146,7 @@ def disable(service: str) -> None:
                     e.g. *rabbit*
 
     """
-    check('systemctl', 'disable', 'snap.microstack.{}'.format(service))
-    check('systemctl', 'mask', 'snap.microstack.{}'.format(service))
+    check('snapctl', 'stop', '--disable', 'microstack.{}'.format(service))
 
 
 def download(url: str, output: str) -> None:

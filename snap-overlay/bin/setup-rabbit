@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -ex
+
+export HOME=$SNAP_COMMON/lib/rabbitmq
+
+$SNAP/usr/sbin/rabbitmqctl add_user openstack rabbitmq || true
+$SNAP/usr/sbin/rabbitmqctl set_permissions openstack ".*" ".*" ".*"

@@ -38,7 +38,7 @@ import sys
 from functools import wraps
 
 from init.config import log
-from init.shell import default_network, check, check_output
+from init.shell import default_network, call, check, check_output
 
 from init import questions
 
@@ -103,10 +103,24 @@ def process_init_args(args):
     return auto
 
 
+def find_missing_plugs():
+    missing = []
+    if not call('snapctl', 'is-connected', 'openvswitch-support'):
+        missing.append("microstack:openvswitch-support")
+    return missing
+
+
 @requires_sudo
 def init() -> None:
     args = parse_init_args()
     auto = process_init_args(args)
+
+    # missing_plugs = find_missing_plugs()
+    # for plug in missing_plugs:
+    #    log.critical("Missing {plug}. Please run snap connect "
+    #                 "{plug} to continue".format(plug=plug))
+    # if missing_plugs:
+    #   sys.exit(1)
 
     question_list = [
         questions.Clustering(),
@@ -124,7 +138,6 @@ def init() -> None:
         questions.NovaControlPlane(),
         questions.NeutronControlPlane(),
         questions.GlanceSetup(),
-        questions.KeyPair(),
         questions.SecurityRules(),
         questions.PostSetup(),
         questions.ExtraServicesQuestion(),

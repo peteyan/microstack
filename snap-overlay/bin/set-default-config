@@ -28,7 +28,7 @@ snapctl set \
 # Passwords, certs, etc.
 snapctl set \
         config.credentials.os-password=keystone \
-        config.credentials.key-pair=id_microstack \
+        config.credentials.key-pair="/home/{USER}/snap/{SNAP_NAME}/common/.ssh/id_microstack" \
         config.credentials.nova-password=nova \
         config.credentials.neutron-password=neutron \
         config.credentials.placement-password=placement \
@@ -37,7 +37,7 @@ snapctl set \
 
 # Host optimizations and fixes.
 snapctl set \
-        config.host.ip-forwarding=true \
+        config.host.ip-forwarding=false \
         config.host.check-qemu=true \
         ;
 

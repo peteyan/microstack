@@ -4,6 +4,8 @@ set -ex
 # Initialize config
 set-default-config
 
+mkdir -p $SNAP_DATA/lib/libvirt/images
+
 # MySQL snapshot for speedy install
 # snapshot is a mysql data dir with
 # rocky keystone,nova,glance,neutron dbs.

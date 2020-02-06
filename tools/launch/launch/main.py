@@ -53,6 +53,35 @@ def parse_args():
     return args
 
 
+def check_keypair():
+    """
+    Check for the microstack keypair's existence, creating it if it doesn't.
+
+    """
+    key_path = check_output(
+        'snapctl', 'get', 'config.credentials.key-pair').format(**os.environ)
+
+    if os.path.exists(key_path):
+        return key_path
+
+    print('Creating local "microstack" ssh key at {}'.format(key_path))
+    # TODO: make sure that we get rid of this path on snap
+    # uninstall. If we don't, check to make sure that MicroStack
+    # has a microstack ssh key, in addition to checking for the
+    # existence of the file.
+    key_dir = os.sep.join(key_path.split(os.sep)[:-1])
+    check('mkdir', '-p', key_dir)
+    check('chmod', '700', key_dir)
+
+    id_ = check_output('openstack', 'keypair', 'create', 'microstack')
+
+    with open(key_path, 'w') as file_:
+        file_.write(id_)
+        check('chmod', '600', key_path)
+
+    return key_path
+
+
 def create_server(name, args):
 
     cmd = [
@@ -131,6 +160,17 @@ def check_server(name, server_id, args):
 def launch(name, args):
     """Launch a server!"""
 
+    if args.key == 'microstack':
+        # Make sure that we have a default ssh key to hand off to the
+        # instance.
+        key_path = check_keypair()
+    else:
+        # We've been passed an ssh key with an unknown path. Drop in
+        # some placeholder text for the message at the end of this
+        # routine, but don't worry about verifying it. We trust the
+        # caller to have created it!
+        key_path = '/path/to/ssh/key'
+
     print("Launching server ...")
     server_id = create_server(name, args)
 
@@ -157,15 +197,11 @@ def launch(name, args):
     if 'cirros' in args.image.lower():
         username = 'cirros'
 
-    ssh_key = '/path/to/ssh/key'
-    if args.key == 'microstack':
-        ssh_key = '$HOME/.ssh/id_microstack'
-
     print("""\
 Server {name} launched! (status is {status})
 
-Access it with `ssh -i {ssh_key} {username}@{ip}`\
-""".format(name=name, status=status, ssh_key=ssh_key,
+Access it with `ssh -i {key_path} {username}@{ip}`\
+""".format(name=name, status=status, key_path=key_path,
            username=username, ip=ip))
 
     gate = check_output('snapctl', 'get', 'config.network.ext-gateway')
