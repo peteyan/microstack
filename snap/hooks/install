@@ -22,4 +22,7 @@ done
 # Make a place for our horizon config overrides to live
 mkdir -p ${SNAP_COMMON}/etc/horizon/local_settings.d
 
+# provide initial openvswitch binaries alternatives
+${SNAP}/bin/ovs-alternatives --install
+
 snap-openstack setup  # Sets up templates for the first time.

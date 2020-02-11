@@ -35,7 +35,6 @@ import wget
 
 from init.config import Env, log
 
-
 _env = Env().get_env()
 
 
@@ -159,7 +158,11 @@ def restart(service: str) -> None:
                     e.g. *rabbit*
 
     """
-    check('systemctl', 'restart', 'snap.microstack.{}'.format(service))
+    check(
+        'systemctl',
+        'restart',
+        'snap.{SNAP_INSTANCE_NAME}.{SERVICE}'.format(**_env, SERVICE=service)
+    )
 
 
 def disable(service: str) -> None:

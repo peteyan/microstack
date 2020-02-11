@@ -23,6 +23,7 @@ snapctl set \
         config.network.ports.dashboard=80 \
         config.network.ports.mysql=3306 \
         config.network.ports.rabbit=5672 \
+        config.network.ovs-dpdk=false \
         ;
 
 # Passwords, certs, etc.
