@@ -1,9 +1,6 @@
 #!/bin/bash
 set -ex
 
-# update the openvswitch binaries alternatives if needed
-${SNAP}/bin/ovs-alternatives --install
-
 snap-openstack setup # Write out templates
 
 source $SNAP_COMMON/etc/microstack.rc

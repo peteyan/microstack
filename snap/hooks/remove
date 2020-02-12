@@ -1,5 +1,0 @@
-#!/bin/bash
-set -ex
-
-# cleanup openvswitch binaries alternatives
-${SNAP}/bin/ovs-alternatives --remove

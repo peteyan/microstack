@@ -1,7 +1,6 @@
 from init.config import Env, log
 from init.questions.question import Question
-from init.shell import check, check_output, restart
-from os import path, remove
+from init.shell import check, check_output
 
 _env = Env().get_env()
 
@@ -51,62 +50,3 @@ class IpForwarding(Question):
         log.info('Setting up ipv4 forwarding...')
 
         check('sysctl', 'net.ipv4.ip_forward=1')
-
-
-class OvsDpdk(Question):
-    """Possibly setup OVS DPDK."""
-
-    _type = 'boolean'
-    _question = 'Do you wish to setup OVS DPDK?'
-    config_key = 'config.network.ovs-dpdk'
-    interactive = True
-
-    def yes(self, answer: bool):
-        """Use ovs-vsctl to setup ovs-dpdk"""
-        log.info('Setting up OVS DPDK...')
-        check('snapctl', 'set', 'config.network.ovs-dpdk={}'.format(answer))
-
-        check('ovs-wrapper', 'ovs-vsctl', '--no-wait', 'set', 'Open_vSwitch',
-              '.', 'other_config:dpdk-init=true',
-              'other_config:dpdk-socket-mem=1024,0',
-              'other_config:pmd-cpu-mask=0x3')
-
-        _path = """{SNAP_COMMON}/etc/neutron/neutron.conf.d/\
-neutron-dpdk.conf""".format(**_env)
-
-        with open(_path, 'w') as _file:
-            _file.write("""\
-[OVS]
-datapath_type = netdev
-vhostuser_socket_dir = {SNAP_COMMON}/run/openvswitch
-""".format(**_env))
-
-        # (re)configure alternatives based on the dpdk answer
-        check('ovs-alternatives', '--install')
-
-        restart('ovs*')
-        restart('neutron*')
-
-    def no(self, answer: bool):
-        log.info('Setting up OVS...')
-        check('snapctl', 'set', 'config.network.ovs-dpdk={}'.format(answer))
-
-        # only remove config kept on default
-        check('ovs-wrapper', 'ovs-vsctl', '--no-wait', 'remove',
-              'Open_vSwitch', '.',
-              'other_config', 'dpdk-init', 'true',
-              'other_config', 'pmd-cpu-mask', '0x3',
-              'dpdk-socket-mem', '1024,0')
-
-        _path = """{SNAP_COMMON}/etc/neutron/neutron.conf.d/\
-neutron-dpdk.conf""".format(**_env)
-
-        if path.exists(_path):
-            remove(_path)
-
-        # (re)configure alternatives based on the dpdk answer
-        check('ovs-alternatives', '--remove')
-        check('ovs-alternatives', '--install')
-
-        restart('ovs*')
-        restart('neutron*')
