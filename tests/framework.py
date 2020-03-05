@@ -96,8 +96,8 @@ class Host():
             snap = self.snap
         print("Installing {}".format(snap))
 
-        check(*self.prefix, 'sudo', 'snap', 'install',
-              '--devmode', '--{}'.format(channel), snap)
+        check(*self.prefix, 'sudo', 'snap', 'install', '--devmode',
+              '--{}'.format(channel), snap)
 
     def init(self, flag='auto'):
         print("Initializing the snap with --{}".format(flag))

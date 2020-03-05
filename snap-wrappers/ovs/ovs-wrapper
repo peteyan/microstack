@@ -13,9 +13,4 @@ mkdir -p ${OVS_LOGDIR}
 mkdir -p ${OVS_RUNDIR}
 mkdir -p ${OVS_SYSCONFDIR}/openvswitch
 
-# if ! snapctl is-connected openvswitch-support; then
-#    echo "openvswitch-support is not connected. Exiting."
-#    exit 0
-# fi
-
 exec $@

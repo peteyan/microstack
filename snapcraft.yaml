@@ -12,6 +12,9 @@ environment:
   PATH: $SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH
   OS_PLACEMENT_CONFIG_DIR: $SNAP/etc/nova/
 
+system-usernames:
+  snap_daemon: shared
+
 layout:
   # Libvirt/Qemu libs
   /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/ceph:
@@ -265,6 +268,13 @@ apps:
       - network-control
       - netlink-connector
       - netlink-audit
+      - libvirt
+      - opengl
+      - raw-usb
+      - hardware-observe
+      - kvm
+      - kernel-module-observe
+
   virtlogd:
     command: virtlogd --pid $SNAP_DATA/virtlogd.pid
     daemon: simple
@@ -365,6 +375,7 @@ apps:
     command: microstack_launch
     plugs:
       - network
+      - network-control  # could also be mount-observe
 
   # Cluster
   cluster-server:
@@ -573,6 +584,7 @@ parts:
       snapcraftctl build
     organize:
       '*' : patches/
+      'usr/sbin/dnsmasq': patches/neutron/dnsmasq
     prime:
       - -*
 
@@ -766,6 +778,8 @@ parts:
       - --firmwarepath=/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/share/seabios:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/share/qemu:/snap/$SNAPCRAFT_PROJECT_NAME/current/usr/lib/ipxe/qemu
       - --disable-user
       - --disable-linux-user
+      - --disable-bsd-user
+      - --disable-vhost-user
       - --enable-system
       - --target-list=x86_64-softmmu
     override-build: |
@@ -855,7 +869,17 @@ parts:
       apt source libvirt
       # Fix issue with running apt source as root
       dpkg-source --before-build libvirt-5.0.0
+      # Prevent libvirt from attempting to run setgroups
+      echo "
+
+      #undef HAVE_SETGROUPS
+      #undef HAVE_SETEUID
+      " >> libvirt-5.0.0/config-post.h
+
+      # Build
       snapcraftctl build
+    organize:
+      'usr/sbin/dnsmasq-orig': usr/sbin/dnsmasq
 
   # MySQL
   mysql-server:
