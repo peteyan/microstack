@@ -419,7 +419,7 @@ parts:
       - libvirt
       - patches
     constraints:
-      - ${SNAPCRAFT_STAGE}/patches/upper-constraints.txt
+      - https://raw.githubusercontent.com/openstack/requirements/stable/stein/upper-constraints.txt
     source: http://tarballs.openstack.org/keystone/keystone-stable-stein.tar.gz
     python-packages:
       - libvirt-python
@@ -428,7 +428,7 @@ parts:
       - uwsgi
       - git+https://opendev.org/x/snap.openstack#egg=snap.openstack
       - http://tarballs.openstack.org/nova/nova-stable-stein.tar.gz
-      - http://tarballs.openstack.org/neutron/neutron-stable-stein.tar.gz
+      - neutron
       - http://tarballs.openstack.org/glance/glance-stable-stein.tar.gz
       - http://tarballs.openstack.org/cinder/cinder-stable-stein.tar.gz
       - horizon
@@ -511,21 +511,6 @@ parts:
     filesets:
       etc:
         - etc/nova/*
-    stage: [$etc]
-    prime: [$etc]
-
-  neutron-config:
-    after: [openstack-projects]
-    plugin: dump
-    source: http://tarballs.openstack.org/neutron/neutron-stable-stein.tar.gz
-    organize:
-      etc/*.conf: etc/neutron/
-      etc/*.ini: etc/neutron/
-      etc/*.json: etc/neutron/
-      etc/rootwrap.d/*: etc/neutron/rootwrap.d/
-    filesets:
-      etc:
-        - etc/neutron/*
     stage: [$etc]
     prime: [$etc]
 
@@ -943,7 +928,7 @@ parts:
     requirements:
       - requirements.txt
     constraints:
-      - ${SNAPCRAFT_STAGE}/patches/upper-constraints.txt
+      - https://raw.githubusercontent.com/openstack/requirements/stable/stein/upper-constraints.txt
     source: tools/cluster
     override-build: |
       # Hack to avoid conflict between openstack-projects'
