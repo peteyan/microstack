@@ -81,8 +81,9 @@ class Host():
         self.prefix = []
         self.dump_dir = '/tmp'
         self.machine = ''
-        self.distro = 'bionic'
-        self.snap = 'microstack_stein_amd64.snap'
+        self.distro = os.environ.get('DISTRO') or 'bionic'
+        self.snap = os.environ.get('SNAP_FILE') or \
+            'microstack_stein_amd64.snap'
         self.horizon_ip = '10.20.20.1'
         self.host_type = 'localhost'
 
@@ -106,11 +107,10 @@ class Host():
     def multipass(self):
         self.machine = petname.generate()
         self.prefix = ['multipass', 'exec', self.machine, '--']
-        distro = os.environ.get('distro') or self.distro
 
         check('sudo', 'snap', 'install', '--classic', '--edge', 'multipass')
 
-        check('multipass', 'launch', '--cpus', '2', '--mem', '8G', distro,
+        check('multipass', 'launch', '--cpus', '2', '--mem', '8G', self.distro,
               '--name', self.machine)
         check('multipass', 'copy-files', self.snap, '{}:'.format(self.machine))
 
