@@ -5,13 +5,8 @@ set -ex
 export PATH=/snap/bin:$PATH
 
 sudo apt update
-
-# Install the X virtual framebuffer, which is required for selenium
-# tests of the horizon dashboard.
-sudo apt install -y xvfb npm libfontconfig1
-sudo npm install -g phantomjs-prebuilt
-# Verify that PhantomJS, our selenium web driver, works.
-phantomjs -v
+# install Firefox which will be used for Web UI testing in a headless mode.
+sudo apt install -y firefox-geckodriver python3-petname python3-selenium
 
 # Setup snapd and snapcraft
 sudo apt install -y snapd

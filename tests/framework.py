@@ -4,11 +4,11 @@ import unittest
 import os
 import subprocess
 import time
-import xvfbwrapper
 from typing import List
 
 import petname
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
 
 
@@ -58,9 +58,9 @@ def gui_wrapper(func):
     def wrapper(cls, *args, **kwargs):
 
         # Setup Selenium Driver
-        cls.display = xvfbwrapper.Xvfb(width=1280, height=720)
-        cls.display.start()
-        cls.driver = webdriver.PhantomJS()
+        options = FirefoxOptions()
+        options.add_argument("-headless")
+        cls.driver = webdriver.Firefox(options=options)
 
         # Run function
         try:
@@ -69,7 +69,6 @@ def gui_wrapper(func):
         finally:
             # Tear down driver
             cls.driver.quit()
-            cls.display.stop()
 
     return wrapper
 
