@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -ex
+
+modprobe -a vhost vhost-net vhost-scsi vhost-vsock pci-stub vfio nbd dm-mod dm-thin-pool dm-snapshot iscsi-tcp target-core-mod

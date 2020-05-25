@@ -1,4 +1,0 @@
-#!/bin/bash
-# Wrapper for dnsmasq
-
-exec $SNAP/usr/sbin/dnsmasq-orig -u snap_daemon -g snap_daemon $@

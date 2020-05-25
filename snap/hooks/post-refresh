@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ex
 
+# Refresh the TEMPLATE.qemu apparmor profile and abstractions.
+rsync -rh $SNAP/etc/apparmor.d $SNAP_COMMON/etc
+
 if [ -z "$(snapctl get config)" ]; then
     # [2019-11-15] Handle build 171 (beta) -> 182
 
@@ -29,5 +32,8 @@ fi
 if [ -z "$(snapctl get config.network.ports.rabbit)" ]; then
         snapctl set config.network.ports.rabbit=5672
 fi
+
+mkdir -p ${SNAP_COMMON}/log/libvirt/qemu
+mkdir -p /run/lock/snap.$SNAP_INSTANCE_NAME
 
 snap-openstack setup  # Write any template changes.

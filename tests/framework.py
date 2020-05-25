@@ -82,7 +82,7 @@ class Host():
         self.machine = ''
         self.distro = os.environ.get('DISTRO') or 'bionic'
         self.snap = os.environ.get('SNAP_FILE') or \
-            'microstack_stein_amd64.snap'
+            'microstack_ussuri_amd64.snap'
         self.horizon_ip = '10.20.20.1'
         self.host_type = 'localhost'
 
@@ -91,17 +91,34 @@ class Host():
             print("Booting a Multipass VM ...")
             self.multipass()
 
+        self.microstack_test()
+
     def install(self, snap=None, channel='dangerous'):
         if snap is None:
             snap = self.snap
         print("Installing {}".format(snap))
 
-        check(*self.prefix, 'sudo', 'snap', 'install', '--devmode',
-              '--{}'.format(channel), snap)
+        check(*self.prefix, 'sudo', 'snap', 'install',
+              '--{}'.format(channel), '--devmode', snap)
 
-    def init(self, flag='auto'):
-        print("Initializing the snap with --{}".format(flag))
-        check(*self.prefix, 'sudo', 'microstack.init', '--{}'.format(flag))
+        # TODO: add microstack-support once it is merged into snapd.
+        connections = [
+                'microstack:libvirt', 'microstack:netlink-audit',
+                'microstack:firewall-control', 'microstack:hardware-observe',
+                'microstack:kernel-module-observe', 'microstack:kvm',
+                'microstack:log-observe', 'microstack:mount-observe',
+                'microstack:netlink-connector', 'microstack:network-observe',
+                'microstack:openvswitch-support', 'microstack:process-control',
+                'microstack:system-observe', 'microstack:network-control',
+                'microstack:system-trace', 'microstack:block-devices',
+                'microstack:raw-usb'
+        ]
+        for connection in connections:
+            check('sudo', 'snap', 'connect', connection)
+
+    def init(self, args=['--auto']):
+        print(f"Initializing the snap with {args}")
+        check(*self.prefix, 'sudo', 'microstack.init', *args)
 
     def multipass(self):
         self.machine = petname.generate()
@@ -118,6 +135,9 @@ class Host():
                             'json')
         info = json.loads(info)
         self.horizon_ip = info['info'][self.machine]['ipv4'][0]
+
+    def microstack_test(self):
+        check('sudo', 'snap', 'install', 'microstack-test')
 
     def dump_logs(self):
         # TODO: make unique log name

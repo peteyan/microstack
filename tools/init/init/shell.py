@@ -129,6 +129,16 @@ def log_wait(log: str, message: str) -> None:
         sleep(1)
 
 
+def start(service: str) -> None:
+    """Start a microstack service.
+
+    :param service: the service(s) to be started. Can contain wild cards.
+                    e.g. *rabbit*
+
+    """
+    check('snapctl', 'start', 'microstack.{}'.format(service))
+
+
 def restart(service: str) -> None:
     """Restart a microstack service.
 
@@ -137,6 +147,16 @@ def restart(service: str) -> None:
 
     """
     check('snapctl', 'restart', 'microstack.{}'.format(service))
+
+
+def enable(service: str) -> None:
+    """Disable and mask a service.
+
+    :param service: the service(s) to be enabled. Can contain wild cards.
+                    e.g. *rabbit*
+
+    """
+    check('snapctl', 'start', '--enable', 'microstack.{}'.format(service))
 
 
 def disable(service: str) -> None:

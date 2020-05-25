@@ -13,9 +13,11 @@ snapctl set \
 
 # Networking related settings.
 snapctl set \
-        config.network.dns=1.1.1.1 \
+        config.network.dns-servers=1.1.1.1 \
+	config.network.dns-domain=microstack.example. \
         config.network.ext-gateway=10.20.20.1 \
         config.network.control-ip=10.20.20.1 \
+	config.network.node-fqdn=`hostname -f` \
         config.network.compute-ip=10.20.20.1 \
         config.network.ext-cidr=10.20.20.1/24 \
         config.network.security-rules=true \
@@ -30,9 +32,17 @@ snapctl set \
         config.credentials.os-password=keystone \
         config.credentials.key-pair="/home/{USER}/snap/{SNAP_NAME}/common/.ssh/id_microstack" \
         config.credentials.nova-password=nova \
+        config.credentials.cinder-password=cinder \
         config.credentials.neutron-password=neutron \
         config.credentials.placement-password=placement \
         config.credentials.glance-password=glance \
+        ;
+
+# Cinder volume backend config.
+snapctl set \
+        config.cinder.setup-loop-based-cinder-lvm-backend=false \
+        config.cinder.loop-device-file-size=32G \
+        config.cinder.lvm-backend-volume-group=cinder-volumes \
         ;
 
 # Host optimizations and fixes.
@@ -45,12 +55,13 @@ snapctl set \
 snapctl set \
         config.services.control-plane=true \
         config.services.hypervisor=true \
+        config.services.spice-console=true \
         ;
 
 # Clustering roles
 snapctl set \
-        cluster.role=control \
-        cluster.password=null \
+        config.cluster.role=control \
+        config.cluster.password=null \
         ;
 
 # Uninstall stuff

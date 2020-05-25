@@ -9,9 +9,11 @@ sudo apt update
 sudo apt install -y firefox-geckodriver python3-petname python3-selenium
 
 # Setup snapd and snapcraft
+# Install snapd if it isn't installed yet (needed to install the snapd snap itself).
 sudo apt install -y snapd
 
-# Build our snap!
+sudo snap install snapd
+
 sudo snap install --classic snapcraft
 sudo snap install lxd
 
@@ -22,4 +24,6 @@ newgrp lxd << END
 set -ex
 lxd init --auto
 snapcraft --use-lxd
+# Delete the build container to free the storage space on a test node.
+lxc delete snapcraft-microstack
 END

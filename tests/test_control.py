@@ -26,7 +26,7 @@ class TestControlNode(Framework):
 
         host = self.get_host()
         host.install()
-        host.init(flag='control')
+        host.init(['--control'])
 
         print("Checking output of services ...")
         services = check_output(

@@ -17,6 +17,7 @@ Web IDE.
 import os
 import sys
 import time
+import json
 import unittest
 
 sys.path.append(os.getcwd())
@@ -35,7 +36,11 @@ class TestBasics(Framework):
         """
         host = self.get_host()
         host.install()
-        host.init()
+        host.init([
+            '--auto',
+            '--setup-loop-based-cinder-lvm-backend',
+            '--loop-device-file-size=32'
+            ])
         prefix = host.prefix
 
         endpoints = check_output(
@@ -71,13 +76,35 @@ class TestBasics(Framework):
         # Check to verify that our bridge is there.
         self.assertTrue('br-ex' in check_output(*prefix, 'ip', 'a'))
 
-        # Try to uninstall snap without sudo.
-        self.assertFalse(call(*prefix, '/snap/bin/microstack.remove',
-                              '--purge', '--auto'))
+        check(*prefix, 'sudo', 'mkdir', '-p', '/tmp/snap.microstack-test/tmp')
+        check(*prefix, 'sudo', 'cp',
+              '/var/snap/microstack/common/etc/microstack.json',
+              '/tmp/snap.microstack-test/tmp/microstack.json')
+        check(*prefix, 'microstack-test.rally', 'db', 'recreate')
+        check(*prefix, 'microstack-test.rally', 'deployment', 'create',
+              '--filename', '/tmp/microstack.json',
+              '--name', 'snap_generated')
+        check(*prefix, 'microstack-test.tempest-init')
+        check(*prefix, 'microstack-test.rally', 'verify', 'start',
+              '--load-list',
+              '/snap/microstack-test/current/2020.06-test-list.txt',
+              '--detailed', '--concurrency', '2')
+        check(*prefix, 'microstack-test.rally', 'verify', 'report',
+              '--type', 'json', '--to',
+              '/tmp/verification-report.json')
+        report = json.loads(check_output(
+            *prefix, 'sudo', 'cat',
+            '/tmp/snap.microstack-test/tmp/verification-report.json'))
+        # Make sure there are no verification failures in the report.
+        failures = list(report['verifications'].values())[0]['failures']
+        self.assertEqual(failures, 0, 'Verification tests had failure.')
+
+        # Try to remove the snap without sudo.
+        self.assertFalse(
+                call(*prefix, 'snap', 'remove', '--purge', 'microstack'))
 
         # Retry with sudo (should succeed).
-        check(*prefix, 'sudo', '/snap/bin/microstack.remove',
-              '--purge', '--auto')
+        check(*prefix, 'sudo', 'snap', 'remove', '--purge', 'microstack')
 
         # Verify that MicroStack is gone.
         self.assertFalse(call(*prefix, 'snap', 'list', 'microstack'))

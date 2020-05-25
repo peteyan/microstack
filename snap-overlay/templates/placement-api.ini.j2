@@ -1,5 +1,5 @@
 [uwsgi]
-wsgi-file = {{ snap }}/bin/nova-placement-api
+wsgi-file = {{ snap }}/bin/placement-api
 uwsgi-socket = {{ snap_common }}/run/placement-api.sock
 buffer-size = 65535
 master = true
@@ -8,3 +8,4 @@ processes = 4
 thunder-lock = true
 lazy-apps = true
 home = {{ snap }}/usr
+pyargv = {{ pyargv }}

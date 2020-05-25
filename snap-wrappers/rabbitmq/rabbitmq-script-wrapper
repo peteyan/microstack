@@ -15,6 +15,10 @@
 ##  Copyright (c) 2007-2014 GoPivotal, Inc.  All rights reserved.
 ##
 
+# Make sure files created by rabbitmq (including the .erlang.cookie file which
+# needs to be restricted to the user only) are created with strict permissions.
+umask 077
+
 mkdir -p $SNAP_COMMON/lib/rabbitmq
 cd $SNAP_COMMON/lib/rabbitmq
 

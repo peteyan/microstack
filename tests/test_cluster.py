@@ -34,7 +34,7 @@ class TestCluster(Framework):
         openstack = '/snap/bin/microstack.openstack'
         control_host = self.get_host()
         control_host.install()
-        control_host.init(flag='control')
+        control_host.init(['--control'])
 
         control_prefix = control_host.prefix
         cluster_password = check_output(*control_prefix, 'sudo', 'snap',

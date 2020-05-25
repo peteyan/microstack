@@ -34,6 +34,7 @@ import logging
 import secrets
 import string
 import sys
+import socket
 
 from functools import wraps
 
@@ -55,6 +56,15 @@ def requires_sudo(func):
     return wrapper
 
 
+def check_file_size_positive(value):
+    ival = int(value)
+    if ival < 1:
+        raise argparse.ArgumentTypeError(
+                f'The file size for a loop device'
+                f' must be larger than 1GB, current: {value}')
+    return ival
+
+
 def parse_init_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--auto', '-a', action='store_true',
@@ -63,6 +73,18 @@ def parse_init_args():
     parser.add_argument('--compute', action='store_true')
     parser.add_argument('--control', action='store_true')
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument(
+            '--setup-loop-based-cinder-lvm-backend',
+            action='store_true',
+            help='(experimental) set up a loop device-backed'
+                 ' LVM backend for Cinder.'
+    )
+    parser.add_argument(
+            '--loop-device-file-size',
+            type=check_file_size_positive, default=32,
+            help=('File size in GB (10^9) of a file to be exposed as a loop'
+                  ' device for the Cinder LVM backend.')
+    )
     args = parser.parse_args()
     return args
 
@@ -100,6 +122,12 @@ def process_init_args(args):
     if args.debug:
         log.setLevel(logging.DEBUG)
 
+    check('snapctl', 'set',
+          f'config.cinder.setup-loop-based-cinder-lvm-backend='
+          f'{str(args.setup_loop_based_cinder_lvm_backend).lower()}')
+    check('snapctl', 'set',
+          f'config.cinder.loop-device-file-size={args.loop_device_file_size}G')
+
     return auto
 
 
@@ -110,7 +138,8 @@ def init() -> None:
 
     question_list = [
         questions.Clustering(),
-        questions.Dns(),
+        questions.DnsServers(),
+        questions.DnsDomain(),
         questions.NetworkSettings(),
         questions.OsPassword(),  # TODO: turn this off if COMPUTE.
         questions.ForceQemu(),
@@ -120,11 +149,15 @@ def init() -> None:
         questions.DashboardAccess(),
         questions.RabbitMq(),
         questions.DatabaseSetup(),
+        questions.PlacementSetup(),
         questions.NovaHypervisor(),
         questions.NovaControlPlane(),
+        questions.NovaSpiceConsoleSetup(),
         questions.NeutronControlPlane(),
         questions.GlanceSetup(),
         questions.SecurityRules(),
+        questions.CinderSetup(),
+        questions.CinderVolumeLVMSetup(),
         questions.PostSetup(),
         questions.ExtraServicesQuestion(),
     ]
@@ -160,7 +193,8 @@ def set_network_info() -> None:
     check('snapctl', 'set', 'config.network.ext-gateway={}'.format(gate))
     check('snapctl', 'set', 'config.network.ext-cidr={}'.format(cidr))
     check('snapctl', 'set', 'config.network.control-ip={}'.format(ip))
-    check('snapctl', 'set', 'config.network.control-ip={}'.format(ip))
+    check('snapctl', 'set',
+          'config.network.node-fqdn={}'.format(socket.getfqdn()))
 
 
 @requires_sudo

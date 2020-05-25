@@ -36,8 +36,8 @@ do
     esac
 done
 
-if [ ! -f microstack_stein_amd64.snap ]; then
-   echo "microstack_stein_amd64.snap not found."
+if [ ! -f microstack_ussuri_amd64.snap ]; then
+   echo "microstack_ussuri_amd64.snap not found."
    echo "Please run snapcraft before executing the tests."
    exit 1
 fi
@@ -72,7 +72,7 @@ if [ "$PREFIX" == "multipass" ]; then
     PREFIX="multipass exec $MACHINE --"
 
     multipass launch --cpus 2 --mem 16G $DISTRO --name $MACHINE
-    multipass copy-files microstack_stein_amd64.snap $MACHINE:
+    multipass copy-files microstack_ussuri_amd64.snap $MACHINE:
 
     HORIZON_IP=`multipass info $MACHINE | grep IPv4 | cut -d":" -f2 \
         | tr -d '[:space:]'`
@@ -80,11 +80,32 @@ fi
 
 # Possibly install a release of the snap before running a test.
 if [ "${UPGRADE_FROM}" != "none" ]; then
-    $PREFIX sudo snap install --classic --${UPGRADE_FROM} microstack
+    $PREFIX sudo snap install --${UPGRADE_FROM} microstack
 fi
 
 # Install the snap under test -- try again if the machine is not yet ready.
-$PREFIX sudo snap install --classic --dangerous microstack*.snap
+$PREFIX sudo snap install --dangerous microstack*.snap
+$PREFIX sudo snap connect microstack:libvirt
+$PREFIX sudo snap connect microstack:netlink-audit
+$PREFIX sudo snap connect microstack:firewall-control
+$PREFIX sudo snap connect microstack:hardware-observe
+$PREFIX sudo snap connect microstack:kernel-module-observe
+$PREFIX sudo snap connect microstack:kvm
+$PREFIX sudo snap connect microstack:log-observe
+$PREFIX sudo snap connect microstack:mount-observe
+$PREFIX sudo snap connect microstack:netlink-connector
+$PREFIX sudo snap connect microstack:network-observe
+$PREFIX sudo snap connect microstack:openvswitch-support
+$PREFIX sudo snap connect microstack:process-control
+$PREFIX sudo snap connect microstack:system-observe
+$PREFIX sudo snap connect microstack:network-control
+$PREFIX sudo snap connect microstack:system-trace
+$PREFIX sudo snap connect microstack:block-devices
+$PREFIX sudo snap connect microstack:raw-usb
+$PREFIX sudo snap connect microstack:hugepages-control
+# $PREFIX sudo snap connect microstack:microstack-support
+
+
 $PREFIX sudo /snap/bin/microstack.init --auto
 
 # Comment out the above and uncomment below to install the version of

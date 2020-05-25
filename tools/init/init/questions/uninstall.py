@@ -2,7 +2,7 @@ import sys
 
 from init.config import Env, log
 from init.questions.question import Question
-from init.shell import check, call
+from init.shell import call
 
 _env = Env().get_env()
 
@@ -29,7 +29,6 @@ class DeleteBridge(Question):
 
 # TODO: cleanup system optimizations
 # TODO: cleanup kernel modules?
-# TODO: cleanup iptables rules
 
 
 class RemoveMicrostack(Question):
@@ -40,8 +39,4 @@ class RemoveMicrostack(Question):
 
     def yes(self, answer):
         """Uninstall MicroStack, passing any command line options to snapd."""
-
         log.info('Uninstalling MicroStack (this may take a while) ...')
-        check('snap', 'remove', '{SNAP_INSTANCE_NAME}'.format(**_env),
-              *ARGS)
-        log.info('MicroStack has been removed from your system!')

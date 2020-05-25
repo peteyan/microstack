@@ -28,7 +28,7 @@ from time import sleep
 from os import path
 
 from init.shell import (check, call, check_output, sql, nc_wait, log_wait,
-                        restart, download)
+                        start, restart, download, disable, enable)
 from init.config import Env, log
 from init.questions.question import Question
 from init.questions import clustering, network, uninstall  # noqa F401
@@ -104,7 +104,7 @@ class Clustering(Question):
         # Turn off cluster server
         # TODO: it would be more secure to reverse this -- only enable
         # to service if we are doing clustering.
-        check('snapctl', 'stop', '--disable', 'microstack.cluster-server')
+        disable('cluster-server')
 
 
 class ConfigQuestion(Question):
@@ -138,32 +138,36 @@ class ConfigQuestion(Question):
                 _env[key.strip()] = val.strip()
 
 
-class Dns(Question):
-    """Possibly override default dns."""
+class DnsServers(ConfigQuestion):
+    """Provide default DNS forwarders for MicroStack to use."""
 
     _type = 'string'
-    _question = 'DNS to use'
-    config_key = 'config.network.dns'
+    _question = 'Upstream DNS servers to be used by instances (VMs)'
+    config_key = 'config.network.dns-servers'
 
     def yes(self, answer: str):
-        """Override the default dhcp_agent.ini file."""
-
-        file_path = '{SNAP_COMMON}/etc/neutron/dhcp_agent.ini'.format(**_env)
-
-        with open(file_path, 'w') as f:
-            f.write("""\
-[DEFAULT]
-interface_driver = openvswitch
-dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq
-enable_isolated_metadata = True
-dnsmasq_dns_servers = {answer}
-""".format(answer=answer))
-
         # Neutron is not actually started at this point, so we don't
         # need to restart.
         # TODO: This isn't idempotent, because it will behave
         # differently if we re-run this script when neutron *is*
         # started. Need to figure that out.
+        pass
+
+
+class DnsDomain(ConfigQuestion):
+    """An internal DNS domain to be used for ML2 DNS."""
+
+    _type = 'string'
+    _question = 'An internal DNS domain to be used for ML2 DNS'
+    config_key = 'config.network.dns-domain'
+
+    def yes(self, answer: str):
+        # Neutron is not actually started at this point, so we don't
+        # need to restart.
+        # TODO: This isn't idempotent, because it will behave
+        # differently if we re-run this script when neutron *is*
+        # started. Need to figure that out.
+        pass
 
 
 class NetworkSettings(Question):
@@ -174,18 +178,45 @@ class NetworkSettings(Question):
     def yes(self, answer):
         log.info('Configuring networking ...')
 
-        # OpenvSwitch services may not have started up properly
-        restart('ovsdb-server')
-        restart('ovs-vswitchd')
+        role = check_output('snapctl', 'get', 'config.cluster.role')
+
+        # Enable and start the services.
+        enable('ovsdb-server')
+        enable('ovs-vswitchd')
+        enable('ovn-ovsdb-server-sb')
+        enable('ovn-ovsdb-server-nb')
 
         network.ExtGateway().ask()
         network.ExtCidr().ask()
+
+        if role == 'control':
+            nb_conn = 'unix:{SNAP_COMMON}/run/ovn/ovnnb_db.sock'.format(**_env)
+            sb_conn = 'unix:{SNAP_COMMON}/run/ovn/ovnsb_db.sock'.format(**_env)
+        elif role == 'compute':
+            control_ip = check_output('snapctl', 'get',
+                                      'config.network.control-ip')
+            sb_conn = f'tcp:{control_ip}:6642'
+            # Not used by any compute node services.
+            nb_conn = ''
+        else:
+            raise Exception(f'Unexpected node role: {role}')
+
+        # Configure OVN SB and NB sockets based on the role node. For
+        # single-node deployments there is no need to use a TCP socket.
+        check_output('snapctl', 'set',
+                     f'config.network.ovn-nb-connection={nb_conn}')
+        check_output('snapctl', 'set',
+                     f'config.network.ovn-sb-connection={sb_conn}')
 
         # Now that we have default or overriden values, setup the
         # bridge and write all the proper values into our config
         # files.
         check('setup-br-ex')
         check('snap-openstack', 'setup')
+
+        if role == 'control':
+            enable('ovn-northd')
+            enable('ovn-controller')
 
         network.IpForwarding().ask()
 
@@ -296,7 +327,7 @@ class RabbitMq(Question):
 
     def no(self, answer: str):
         log.info('Disabling local rabbit ...')
-        check('snapctl', 'stop', '--disable', 'microstack.rabbitmq-server')
+        disable('rabbitmq-server')
 
 
 class DatabaseSetup(Question):
@@ -315,16 +346,17 @@ class DatabaseSetup(Question):
     def _create_dbs(self) -> None:
         # TODO: actually use passwords here.
         for db in ('neutron', 'nova', 'nova_api', 'nova_cell0', 'cinder',
-                   'glance', 'keystone'):
-            sql("CREATE DATABASE IF NOT EXISTS {db};".format(db=db))
-            sql(
-                "GRANT ALL PRIVILEGES ON {db}.* TO {db}@{control_ip} \
-                IDENTIFIED BY '{db}';".format(db=db, **_env))
+                   'glance', 'keystone', 'placement'):
+            sql("CREATE USER IF NOT EXISTS '{db}'@'{control_ip}'"
+                " IDENTIFIED BY '{db}';".format(db=db, **_env))
+            sql("CREATE DATABASE IF NOT EXISTS `{db}`;".format(db=db))
+            sql("GRANT ALL PRIVILEGES ON {db}.* TO '{db}'@'{control_ip}';"
+                "".format(db=db, **_env))
 
         # Grant nova user access to cell0
         sql(
-            "GRANT ALL PRIVILEGES ON nova_cell0.* TO 'nova'@'{control_ip}' \
-            IDENTIFIED BY \'nova';".format(**_env))
+            "GRANT ALL PRIVILEGES ON nova_cell0.* TO 'nova'@'{control_ip}';"
+            "".format(**_env))
 
     def _bootstrap(self) -> None:
 
@@ -337,7 +369,8 @@ class DatabaseSetup(Question):
               '--bootstrap-password', _env['ospassword'],
               '--bootstrap-admin-url', bootstrap_url,
               '--bootstrap-internal-url', bootstrap_url,
-              '--bootstrap-public-url', bootstrap_url)
+              '--bootstrap-public-url', bootstrap_url,
+              '--bootstrap-region-id', 'microstack')
 
     def yes(self, answer: str) -> None:
         """Setup Databases.
@@ -355,8 +388,8 @@ class DatabaseSetup(Question):
 
         # Start keystone-uwsgi. We use snapctl, because systemd
         # doesn't yet know about the service.
-        check('snapctl', 'start', 'microstack.nginx')
-        check('snapctl', 'start', 'microstack.keystone-uwsgi')
+        start('nginx')
+        start('keystone-uwsgi')
 
         log.info('Configuring Keystone Fernet Keys ...')
         check('snap-openstack', 'launch', 'keystone-manage',
@@ -382,7 +415,7 @@ class DatabaseSetup(Question):
         check('snapctl', 'set', 'database.ready=true')
 
         log.info('Disabling local MySQL ...')
-        check('snapctl', 'stop', '--disable', 'microstack.mysqld')
+        disable('mysqld')
 
 
 class NovaHypervisor(Question):
@@ -404,11 +437,63 @@ class NovaHypervisor(Question):
                      'microstack', 'compute', endpoint,
                      'http://{compute_ip}:8774/v2.1'.format(**_env))
 
-        check('snapctl', 'start', 'microstack.nova-compute')
+        start('nova-compute')
 
     def no(self, answer):
         log.info('Disabling nova compute service ...')
-        check('snapctl', 'stop', '--disable', 'microstack.nova-compute')
+        disable('nova-compute')
+
+
+class NovaSpiceConsoleSetup(Question):
+    """Run the Spice HTML5 console proxy service"""
+
+    _type = 'boolean'
+    config_key = 'config.services.spice-console'
+
+    def yes(self, answer):
+        log.info('Configuring the Spice HTML5 console service...')
+        start('nova-spicehtml5proxy')
+
+    def no(self, answer):
+        log.info('Disabling nova compute service ...')
+        disable('nova-spicehtml5proxy')
+
+
+class PlacementSetup(Question):
+    """Setup Placement services."""
+
+    _type = 'boolean'
+    config_key = 'config.services.control-plane'
+
+    def yes(self, answer: str) -> None:
+        log.info('Configuring the Placement service...')
+
+        if not call('openstack', 'user', 'show', 'placement'):
+            check('openstack', 'user', 'create', '--domain', 'default',
+                  '--password', 'placement', 'placement')
+            check('openstack', 'role', 'add', '--project', 'service',
+                  '--user', 'placement', 'admin')
+
+        if not call('openstack', 'service', 'show', 'placement'):
+            check('openstack', 'service', 'create', '--name',
+                  'placement', '--description', '"Placement API"',
+                  'placement')
+
+            for endpoint in ['public', 'internal', 'admin']:
+                call('openstack', 'endpoint', 'create', '--region',
+                     'microstack', 'placement', endpoint,
+                     'http://{control_ip}:8778'.format(**_env))
+
+        start('placement-uwsgi')
+
+        log.info('Running Placement DB migrations...')
+        check('snap-openstack', 'launch', 'placement-manage', 'db', 'sync')
+
+        restart('placement-uwsgi')
+
+    def no(self, answer):
+        log.info('Disabling the Placement service...')
+        disable('placement-uwsgi')
 
 
 class NovaControlPlane(Question):
@@ -446,31 +531,14 @@ class NovaControlPlane(Question):
             check('openstack', 'role', 'add', '--project',
                   'service', '--user', 'nova', 'admin')
 
-        if not call('openstack', 'user', 'show', 'placement'):
-            check('openstack', 'user', 'create', '--domain', 'default',
-                  '--password', 'placement', 'placement')
-            check('openstack', 'role', 'add', '--project', 'service',
-                  '--user', 'placement', 'admin')
-
-        if not call('openstack', 'service', 'show', 'placement'):
-            check('openstack', 'service', 'create', '--name',
-                  'placement', '--description', '"Placement API"',
-                  'placement')
-
-            for endpoint in ['public', 'internal', 'admin']:
-                call('openstack', 'endpoint', 'create', '--region',
-                     'microstack', 'placement', endpoint,
-                     'http://{control_ip}:8778'.format(**_env))
-
         # Use snapctl to start nova services.  We need to call them
         # out manually, because systemd doesn't know about them yet.
         # TODO: parse the output of `snapctl services` to get this
         # list automagically.
-        for service in [
-                'microstack.nova-api',
-        ]:
-            check('snapctl', 'start', service)
+        start('nova-api')
 
+        log.info('Running Nova API DB migrations'
+                 ' (this will take a lot of time)...')
         check('snap-openstack', 'launch', 'nova-manage', 'api_db', 'sync')
 
         if 'cell0' not in check_output('snap-openstack', 'launch',
@@ -485,18 +553,19 @@ class NovaControlPlane(Question):
             check('snap-openstack', 'launch', 'nova-manage', 'cell_v2',
                   'create_cell', '--name=cell1', '--verbose')
 
+        log.info('Running Nova DB migrations'
+                 ' (this will take a lot of time)...')
         check('snap-openstack', 'launch', 'nova-manage', 'db', 'sync')
 
         restart('nova-api')
         restart('nova-compute')
 
         for service in [
-                'microstack.nova-api-metadata',
-                'microstack.nova-conductor',
-                'microstack.nova-scheduler',
-                'microstack.nova-uwsgi',
+                'nova-api-metadata',
+                'nova-conductor',
+                'nova-scheduler',
         ]:
-            check('snapctl', 'start', service)
+            start(service)
 
         nc_wait(_env['compute_ip'], '8774')
 
@@ -509,13 +578,92 @@ class NovaControlPlane(Question):
         log.info('Disabling nova control plane services ...')
 
         for service in [
-                'microstack.nova-uwsgi',
-                'microstack.nova-api',
-                'microstack.nova-conductor',
-                'microstack.nova-scheduler',
-                'microstack.nova-api-metadata']:
+                'nova-api',
+                'nova-conductor',
+                'nova-scheduler',
+                'nova-api-metadata']:
+            disable(service)
 
-            check('snapctl', 'stop', '--disable', service)
+
+class CinderSetup(Question):
+    """Setup Placement services."""
+
+    _type = 'boolean'
+    config_key = 'config.services.control-plane'
+
+    def yes(self, answer: str) -> None:
+        log.info('Configuring the Cinder services...')
+
+        if not call('openstack', 'user', 'show', 'cinder'):
+            check('openstack', 'user', 'create', '--domain', 'default',
+                  '--password', 'cinder', 'cinder')
+            check('openstack', 'role', 'add', '--project', 'service',
+                  '--user', 'cinder', 'admin')
+
+        control_ip = _env['control_ip']
+        for endpoint in ['public', 'internal', 'admin']:
+            for api_version in ['v2', 'v3']:
+                if not call('openstack', 'service', 'show',
+                            f'cinder{api_version}'):
+                    check('openstack', 'service', 'create', '--name',
+                          f'cinder{api_version}', '--description',
+                          f'"Cinder {api_version} API"',
+                          f'volume{api_version}')
+                if not check_output(
+                        'openstack', 'endpoint', 'list',
+                        '--service', f'volume{api_version}', '--interface',
+                        endpoint):
+                    check(
+                            'openstack', 'endpoint', 'create', '--region',
+                            'microstack', f'volume{api_version}', endpoint,
+                            f'http://{control_ip}:8776/{api_version}/'
+                            '$(project_id)s'
+                    )
+        restart('cinder-uwsgi')
+
+        log.info('Running Cinder DB migrations...')
+        check('snap-openstack', 'launch', 'cinder-manage', 'db', 'sync')
+
+        restart('cinder-uwsgi')
+        restart('cinder-scheduler')
+
+    def no(self, answer):
+        log.info('Disabling Cinder services...')
+
+        for service in [
+                'cinder-uwsgi',
+                'cinder-scheduler',
+                'cinder-volume',
+                'cinder-backup']:
+            disable(service)
+
+
+class CinderVolumeLVMSetup(Question):
+    """Setup cinder-volume with LVM."""
+
+    _type = 'boolean'
+    config_key = 'config.cinder.setup-loop-based-cinder-lvm-backend'
+    _question = ('(experimental) Do you want to setup a loop device-backed LVM'
+                 ' volume backend for Cinder?')
+    interactive = True
+
+    def yes(self, answer: bool) -> None:
+        check('snapctl', 'set',
+              f'config.cinder.setup-loop-based-cinder-lvm-backend'
+              f'={str(answer).lower()}')
+        log.info('Setting up cinder-volume service with the LVM backend...')
+        enable('setup-lvm-loopdev')
+        enable('cinder-volume')
+        enable('target')
+        enable('iscsid')
+
+    def no(self, answer: bool) -> None:
+        check('snapctl', 'set', f'config.cinder.lvm.setup-file-backed-lvm='
+                                f'{str(answer).lower()}')
+        disable('setup-lvm-loopdev')
+        disable('cinder-volume')
+        disable('iscsid')
+        disable('target')
 
 
 class NeutronControlPlane(Question):
@@ -541,26 +689,16 @@ class NeutronControlPlane(Question):
                      'microstack', 'network', endpoint,
                      'http://{control_ip}:9696'.format(**_env))
 
-        for service in [
-                'microstack.neutron-api',
-                'microstack.neutron-dhcp-agent',
-                'microstack.neutron-l3-agent',
-                'microstack.neutron-metadata-agent',
-                'microstack.neutron-openvswitch-agent',
-        ]:
-            check('snapctl', 'start', service)
+        start('neutron-api')
 
         check('snap-openstack', 'launch', 'neutron-db-manage', 'upgrade',
               'head')
 
         for service in [
-                'microstack.neutron-api',
-                'microstack.neutron-dhcp-agent',
-                'microstack.neutron-l3-agent',
-                'microstack.neutron-metadata-agent',
-                'microstack.neutron-openvswitch-agent',
+                'neutron-api',
+                'neutron-ovn-metadata-agent',
         ]:
-            check('snapctl', 'restart', service)
+            restart(service)
 
         nc_wait(_env['control_ip'], '9696')
 
@@ -594,20 +732,23 @@ class NeutronControlPlane(Question):
         neutron on this machine.
 
         """
-        # Make sure that the agent is running.
+        # Make sure the necessary services are enabled and started.
         for service in [
-                'microstack.neutron-openvswitch-agent',
+                'ovs-vswitchd',
+                'ovsdb-server',
+                'ovn-controller',
+                'neutron-ovn-metadata-agent'
         ]:
-            check('snapctl', 'start', service)
+            enable(service)
 
         # Disable the other services.
         for service in [
-                'microstack.neutron-api',
-                'microstack.neutron-dhcp-agent',
-                'microstack.neutron-metadata-agent',
-                'microstack.neutron-l3-agent',
+                'neutron-api',
+                'ovn-northd',
+                'ovn-ovsdb-server-sb',
+                'ovn-ovsdb-server-nb',
         ]:
-            check('snapctl', 'stop', '--disable', service)
+            disable(service)
 
 
 class GlanceSetup(Question):
@@ -660,10 +801,10 @@ class GlanceSetup(Question):
                       'http://{compute_ip}:9292'.format(**_env))
 
         for service in [
-                'microstack.glance-api',
-                'microstack.registry',  # TODO rename to glance-registery
+                'glance-api',
+                'registry',  # TODO rename to glance-registery
         ]:
-            check('snapctl', 'start', service)
+            start(service)
 
         check('snap-openstack', 'launch', 'glance-manage', 'db_sync')
 
@@ -677,8 +818,8 @@ class GlanceSetup(Question):
         self._fetch_cirros()
 
     def no(self, answer):
-        check('snapctl', 'stop', '--disable', 'microstack.glance-api')
-        check('snapctl', 'stop', '--disable', 'microstack.registry')
+        disable('glance-api')
+        disable('registry')
 
 
 class SecurityRules(Question):
@@ -725,9 +866,9 @@ class PostSetup(Question):
         # TODO: fix issue.
         restart('libvirtd')
         restart('virtlogd')
+        restart('nova-compute')
 
-        # Start horizon
-        check('snapctl', 'start', 'microstack.horizon-uwsgi')
+        restart('horizon-uwsgi')
 
         check('snapctl', 'set', 'initialized=true')
         log.info('Complete. Marked microstack as initialized!')
@@ -739,13 +880,13 @@ class SimpleServiceQuestion(Question):
         log.info('enabling and starting ' + self.__class__.__name__)
 
         for service in self.services:
-            check('snapctl', 'start', '--enable', service)
+            enable(service)
 
         log.info(self.__class__.__name__ + ' enabled')
 
     def no(self, answer):
         for service in self.services:
-            check('snapctl', 'stop', '--disable', service)
+            disable(service)
 
 
 class ExtraServicesQuestion(Question):
