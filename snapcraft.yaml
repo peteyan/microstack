@@ -572,6 +572,8 @@ parts:
       - uca-sources
     source: patches/
     plugin: dump
+    build-packages:
+      - curl
     override-build: |
       # Create ${SNAPCRAFT_STAGE}/patches/upper-constraints
 
@@ -830,6 +832,7 @@ parts:
     - dmidecode
     - dnsmasq
     - iptables
+    - genisoimage
     - libxml2
     - libyajl2
     - try: [libnuma1]

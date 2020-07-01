@@ -10,9 +10,16 @@ sudo apt install -y firefox-geckodriver python3-petname python3-selenium
 
 # Setup snapd and snapcraft
 sudo apt install -y snapd
-sudo snap install --classic snapcraft
-sudo snap install --classic lxd
-sudo lxd init --auto
 
 # Build our snap!
-sudo snapcraft --use-lxd
+sudo snap install --classic snapcraft
+sudo snap install lxd
+
+sudo usermod -a -G lxd ${USER}
+
+# Since the current shell does not have the lxd group gid, use newgrp.
+newgrp lxd << END
+set -ex
+lxd init --auto
+snapcraft --use-lxd
+END
