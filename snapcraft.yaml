@@ -1007,8 +1007,8 @@ parts:
     plugin: nil
     source: ""
     override-build: |
-      cat ../../../project/filebeat.pgp.key | apt-key add -
-      cat ../../../project/telegraf.pgp.key | apt-key add -
+      cat $SNAPCRAFT_PROJECT_DIR/filebeat.pgp.key | apt-key add -
+      cat $SNAPCRAFT_PROJECT_DIR/telegraf.pgp.key | apt-key add -
       apt-get install apt-transport-https
       echo 'deb https://artifacts.elastic.co/packages/5.x/apt stable main' > /etc/apt/sources.list.d/elastic-5.x.list
       echo 'deb http://ppa.launchpad.net/telegraf-devs/ppa/ubuntu bionic main' > /etc/apt/sources.list.d/telegraf.x.list
