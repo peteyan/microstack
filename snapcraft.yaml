@@ -1006,6 +1006,8 @@ parts:
   lma-build-prep:
     plugin: nil
     source: ""
+    build-packages:
+        - dirmngr
     override-build: |
       cat $SNAPCRAFT_PROJECT_DIR/filebeat.pgp.key | apt-key add -
       cat $SNAPCRAFT_PROJECT_DIR/telegraf.pgp.key | apt-key add -
