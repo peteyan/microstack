@@ -476,7 +476,6 @@ apps:
     command: usr/sbin/rabbitmq-plugins
     environment:
       HOME: $SNAP_COMMON/lib/rabbitmq
-    plugs: []
       # TODO: - microstack-support
 
   # Memcached
