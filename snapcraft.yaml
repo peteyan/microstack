@@ -610,8 +610,6 @@ apps:
     plugs:
       - network
       - network-bind
-    command: bin/nrpe
-    daemon: simple
 
   telegraf:
     command: bin/telegraf
