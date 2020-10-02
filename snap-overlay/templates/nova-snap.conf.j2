@@ -20,4 +20,4 @@ lock_path = {{ snap_common }}/lock
 ovsdb_connection = unix:{{ snap_common }}/run/openvswitch/db.sock
 
 [cinder]
-os_region_name = microstack
+os_region_name = {{ region_name }}

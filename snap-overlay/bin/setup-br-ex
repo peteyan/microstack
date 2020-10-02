@@ -11,19 +11,15 @@ set -ex
 
 extcidr=$(snapctl get config.network.ext-cidr)
 controlip=$(snapctl get config.network.control-ip)
+external_bridge_name=$(snapctl get config.network.external-bridge-name)
+physnet_name=$(snapctl get config.network.physnet-name)
 
 # NOTE(dmitriis): this needs to be reworked to allow for OVN + direct exit of traffic to
 # the provider network from a compute node.
 
 # Create an external bridge in the system datapath.
-ovs-vsctl --retry --may-exist add-br br-ex -- set bridge br-ex datapath_type=system protocols=OpenFlow13,OpenFlow15
-ovs-vsctl set open . external-ids:ovn-bridge-mappings=physnet1:br-ex
-ovs-vsctl set open . external-ids:ovn-cms-options="enable-chassis-as-gw"
-
-# Configure the settings used by self-configuration of ovn-controller.
-ovs-vsctl set open . external-ids:ovn-encap-type=geneve -- set open . external-ids:ovn-encap-ip=$controlip
-# Leave SB database connection details for ovn-controller to pick up.
-ovs-vsctl set open . external-ids:ovn-remote='unix:/var/snap/microstack/common/run/ovn/ovnsb_db.sock'
+ovs-vsctl --retry --may-exist add-br $external_bridge_name -- set bridge $external_bridge_name datapath_type=system protocols=OpenFlow13,OpenFlow15
+ovs-vsctl set open . external-ids:ovn-bridge-mappings=$physnet_name:$external_bridge_name
 
 # NOTE: system-id is a randomly-generated UUID (see the --system-id=random option for ovs-ctl)
 # As it is generated automatically, we do not set it here.

@@ -15,6 +15,7 @@ set-default-config
 #    an operator (connecting openvswitch-support loads the openvswitch kernel module
 #    but auto-connection is not enabled for openvswitch-support).
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovsdb-server
+snapctl stop --disable $SNAP_INSTANCE_NAME.neutron-ovn-metadata-agent
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovn-ovsdb-server-sb
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovn-ovsdb-server-nb
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovs-vswitchd

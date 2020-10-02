@@ -82,6 +82,7 @@ setup:
     "{snap_common}/etc/microstack.rc": 0644
     "{snap_common}/etc/microstack.json": 0644
   snap-config-keys:
+    region_name: 'config.keystone.region-name'
     ospassword: 'config.credentials.os-password'
     nova_password: 'config.credentials.nova-password'
     cinder_password: 'config.credentials.cinder-password'
@@ -211,16 +212,6 @@ entry_points:
     config-files-override:
       - "{snap_common}/etc/neutron/neutron.conf"
       - "{snap_common}/etc/neutron/plugins/ml2/ml2_conf.ini"
-    config-dirs:
-      - "{snap_common}/etc/neutron/neutron.conf.d"
-  neutron-openvswitch-agent:
-    binary: "{snap}/bin/neutron-openvswitch-agent"
-    config-files:
-      - "{snap}/etc/neutron/neutron.conf"
-      - "{snap}/etc/neutron/plugins/ml2/openvswitch_agent.ini"
-    config-files-override:
-      - "{snap_common}/etc/neutron/neutron.conf"
-      - "{snap_common}/etc/neutron/plugins/ml2/openvswitch_agent.ini"
     config-dirs:
       - "{snap_common}/etc/neutron/neutron.conf.d"
   neutron-ovs-cleanup:

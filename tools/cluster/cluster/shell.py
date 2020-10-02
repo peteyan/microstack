@@ -36,15 +36,3 @@ def check(*args):
 
     """
     return subprocess.check_call(args, env=os.environ)
-
-
-def write_tunnel_config(local_ip):
-    """Write tunnel config file for neutron agent."""
-
-    path_ = '{SNAP_COMMON}/etc/neutron/neutron.conf.d/tunnel.conf'.format(
-        **os.environ)
-    with open(path_, 'w') as file_:
-        file_.write("""\
-[OVS]
-local_ip = {local_ip}
-""".format(local_ip=local_ip))

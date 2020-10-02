@@ -4,7 +4,7 @@ import json
 
 import requests
 
-from cluster.shell import check, check_output, write_tunnel_config
+from cluster.shell import check, check_output
 
 
 def join():
@@ -29,10 +29,6 @@ def join():
 
     # TODO: add better error handling to the below
     os_password = resp['config']['credentials']['os-password']
-
-    # Write out tunnel config and restart neutron openvswitch agent.
-    write_tunnel_config(my_ip)
-    check('snapctl', 'restart', 'microstack.neutron-openvswitch-agent')
 
     # Set passwords and such
     check('snapctl', 'set', 'config.credentials.os-password={}'.format(

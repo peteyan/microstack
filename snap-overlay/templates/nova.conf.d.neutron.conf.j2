@@ -1,11 +1,11 @@
 [neutron]
 url = http://{{ control_ip }}:9696
 auth_url = http://{{ control_ip }}:5000
-memcached_servers = {{ control_ip }}:11211
+memcached_servers = {{ compute_ip }}:11211
 auth_type = password
 project_domain_name = default
 user_domain_name = default
-region_name = microstack
+region_name = {{ region_name }}
 project_name = service
 username = neutron
 password = {{ neutron_password }}

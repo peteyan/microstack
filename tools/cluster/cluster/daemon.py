@@ -2,7 +2,7 @@ import json
 
 from flask import Flask, request
 
-from cluster.shell import check, check_output, write_tunnel_config
+from cluster.shell import check_output
 
 
 app = Flask(__name__)
@@ -21,10 +21,6 @@ def join_info(password, ip_address):
     # Load config
     # TODO: be selective about what we return. For now, we just get everything.
     config = json.loads(check_output('snapctl', 'get', 'config'))
-
-    # Write out tunnel config and restart neutron openvswitch agent.
-    write_tunnel_config(config['network']['control-ip'])
-    check('snapctl', 'restart', 'microstack.neutron-openvswitch-agent')
 
     info = {'config': config}
     return info

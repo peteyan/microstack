@@ -189,17 +189,29 @@ class NetworkSettings(Question):
         network.ExtGateway().ask()
         network.ExtCidr().ask()
 
+        control_ip = check_output('snapctl', 'get',
+                                  'config.network.control-ip')
         if role == 'control':
             nb_conn = 'unix:{SNAP_COMMON}/run/ovn/ovnnb_db.sock'.format(**_env)
             sb_conn = 'unix:{SNAP_COMMON}/run/ovn/ovnsb_db.sock'.format(**_env)
+            check_output('ovs-vsctl', 'set', 'open', '.',
+                         f'external-ids:ovn-encap-ip={control_ip}')
         elif role == 'compute':
-            control_ip = check_output('snapctl', 'get',
-                                      'config.network.control-ip')
             sb_conn = f'tcp:{control_ip}:6642'
             # Not used by any compute node services.
             nb_conn = ''
+            compute_ip = check_output('snapctl', 'get',
+                                      'config.network.compute-ip')
+            # Set the IP address to be used for a tunnel endpoint.
+            check_output('ovs-vsctl', 'set', 'open', '.',
+                         f'external-ids:ovn-encap-ip={compute_ip}')
         else:
             raise Exception(f'Unexpected node role: {role}')
+
+        # ovn-controller does not start unless both the ovn-encap-ip and the
+        # ovn-encap-type are set.
+        check_output('ovs-vsctl', 'set', 'open', '.',
+                     'external-ids:ovn-encap-type=geneve')
 
         # Configure OVN SB and NB sockets based on the role node. For
         # single-node deployments there is no need to use a TCP socket.
@@ -208,6 +220,16 @@ class NetworkSettings(Question):
         check_output('snapctl', 'set',
                      f'config.network.ovn-sb-connection={sb_conn}')
 
+        # Set SB database connection details for ovn-controller to pick up.
+        check_output(
+                'ovs-vsctl', 'set', 'open', '.',
+                f'external-ids:ovn-remote={sb_conn}'
+        )
+        check_output(
+                'ovs-vsctl', 'set', 'open', '.',
+                'external-ids:ovn-cms-options=enable-chassis-as-gw'
+        )
+
         # Now that we have default or overriden values, setup the
         # bridge and write all the proper values into our config
         # files.
@@ -215,6 +237,7 @@ class NetworkSettings(Question):
         check('snap-openstack', 'setup')
 
         if role == 'control':
+
             enable('ovn-northd')
             enable('ovn-controller')
 
