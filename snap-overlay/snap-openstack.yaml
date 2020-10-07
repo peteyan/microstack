@@ -83,13 +83,13 @@ setup:
     "{snap_common}/etc/microstack.json": 0644
   snap-config-keys:
     region_name: 'config.keystone.region-name'
-    ospassword: 'config.credentials.os-password'
+    keystone_password: 'config.credentials.keystone-password'
     nova_password: 'config.credentials.nova-password'
     cinder_password: 'config.credentials.cinder-password'
     neutron_password: 'config.credentials.neutron-password'
-    placement_password: 'config.credentials.placement-password'
     glance_password: 'config.credentials.glance-password'
     placement_password: 'config.credentials.placement-password'
+    rabbitmq_password: 'config.credentials.rabbitmq-password'
     control_ip: 'config.network.control-ip'
     node_fqdn: 'config.network.node-fqdn'
     compute_ip: 'config.network.compute-ip'

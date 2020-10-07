@@ -4,7 +4,8 @@ import json
 
 import requests
 
-from cluster.shell import check, check_output
+from cluster import shell
+from cluster.shell import check_output
 
 
 def join():
@@ -27,12 +28,10 @@ def join():
             resp.json))
     resp = resp.json()
 
-    # TODO: add better error handling to the below
-    os_password = resp['config']['credentials']['os-password']
-
-    # Set passwords and such
-    check('snapctl', 'set', 'config.credentials.os-password={}'.format(
-        os_password))
+    credentials = resp['config']['credentials']
+    control_creds = {f'config.credentials.{k}': v
+                     for k, v in credentials.items()}
+    shell.config_set(**control_creds)
 
 
 if __name__ == '__main__':

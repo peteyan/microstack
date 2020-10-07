@@ -7,7 +7,7 @@ for now, we're keeping things simple (if a big lengthy)
 
 ----------------------------------------------------------------------
 
-Copyright 2019 Canonical Ltd
+Copyright 2020 Canonical Ltd
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import json
 from time import sleep
 from os import path
 
+from init import shell
 from init.shell import (check, call, check_output, sql, nc_wait, log_wait,
                         start, restart, download, disable, enable)
 from init.config import Env, log
@@ -247,12 +248,10 @@ class NetworkSettings(Question):
 class OsPassword(ConfigQuestion):
     _type = 'string'
     _question = 'Openstack Admin Password'
-    config_key = 'config.credentials.os-password'
+    config_key = 'config.credentials.keystone-password'
 
     def yes(self, answer):
-        _env['ospassword'] = answer
-
-    # TODO obfuscate the password!
+        _env['keystone_password'] = answer
 
 
 class ForceQemu(Question):
@@ -367,19 +366,24 @@ class DatabaseSetup(Question):
                  'mysqld: ready for connections.')
 
     def _create_dbs(self) -> None:
-        # TODO: actually use passwords here.
-        for db in ('neutron', 'nova', 'nova_api', 'nova_cell0', 'cinder',
-                   'glance', 'keystone', 'placement'):
-            sql("CREATE USER IF NOT EXISTS '{db}'@'{control_ip}'"
-                " IDENTIFIED BY '{db}';".format(db=db, **_env))
-            sql("CREATE DATABASE IF NOT EXISTS `{db}`;".format(db=db))
-            sql("GRANT ALL PRIVILEGES ON {db}.* TO '{db}'@'{control_ip}';"
-                "".format(db=db, **_env))
-
-        # Grant nova user access to cell0
-        sql(
-            "GRANT ALL PRIVILEGES ON nova_cell0.* TO 'nova'@'{control_ip}';"
-            "".format(**_env))
+        db_creds = shell.config_get('config.credentials')
+        for service_user, db_name in (
+            ('neutron', 'neutron'),
+            ('nova', 'nova'),
+            ('nova', 'nova_api'),
+            ('nova', 'nova_cell0'),
+            ('cinder', 'cinder'),
+            ('glance', 'glance'),
+            ('keystone', 'keystone'),
+            ('placement', 'placement')
+        ):
+            db_password = db_creds[f'{service_user}-password']
+            sql("CREATE USER IF NOT EXISTS '{user}'@'{control_ip}'"
+                " IDENTIFIED BY '{db_password}';".format(
+                    user=service_user, db_password=db_password, **_env))
+            sql("CREATE DATABASE IF NOT EXISTS `{db}`;".format(db=db_name))
+            sql("GRANT ALL PRIVILEGES ON {db}.* TO '{user}'@'{control_ip}';"
+                "".format(db=db_name, user=service_user, **_env))
 
     def _bootstrap(self) -> None:
 
@@ -389,7 +393,7 @@ class DatabaseSetup(Question):
         bootstrap_url = 'http://{control_ip}:5000/v3/'.format(**_env)
 
         check('snap-openstack', 'launch', 'keystone-manage', 'bootstrap',
-              '--bootstrap-password', _env['ospassword'],
+              '--bootstrap-password', _env['keystone_password'],
               '--bootstrap-admin-url', bootstrap_url,
               '--bootstrap-internal-url', bootstrap_url,
               '--bootstrap-public-url', bootstrap_url,
@@ -449,17 +453,6 @@ class NovaHypervisor(Question):
 
     def yes(self, answer):
         log.info('Configuring nova compute hypervisor ...')
-
-        if not call('openstack', 'service', 'show', 'compute'):
-            check('openstack', 'service', 'create', '--name', 'nova',
-                  '--description', '"Openstack Compute"', 'compute')
-            # TODO make sure that we are the control plane before executing
-            # TODO if control plane is not hypervisor, still create this
-            for endpoint in ['public', 'internal', 'admin']:
-                call('openstack', 'endpoint', 'create', '--region',
-                     'microstack', 'compute', endpoint,
-                     'http://{compute_ip}:8774/v2.1'.format(**_env))
-
         start('nova-compute')
 
     def no(self, answer):
@@ -492,8 +485,12 @@ class PlacementSetup(Question):
         log.info('Configuring the Placement service...')
 
         if not call('openstack', 'user', 'show', 'placement'):
-            check('openstack', 'user', 'create', '--domain', 'default',
-                  '--password', 'placement', 'placement')
+            check(
+                'openstack', 'user', 'create', '--domain', 'default',
+                '--password',
+                shell.config_get('config.credentials.placement-password'),
+                'placement',
+            )
             check('openstack', 'role', 'add', '--project', 'service',
                   '--user', 'placement', 'admin')
 
@@ -549,8 +546,12 @@ class NovaControlPlane(Question):
         log.info('Configuring nova control plane services ...')
 
         if not call('openstack', 'user', 'show', 'nova'):
-            check('openstack', 'user', 'create', '--domain',
-                  'default', '--password', 'nova', 'nova')
+            check(
+                'openstack', 'user', 'create', '--domain', 'default',
+                '--password',
+                shell.config_get('config.credentials.nova-password'),
+                'nova'
+            )
             check('openstack', 'role', 'add', '--project',
                   'service', '--user', 'nova', 'admin')
 
@@ -561,7 +562,7 @@ class NovaControlPlane(Question):
         start('nova-api')
 
         log.info('Running Nova API DB migrations'
-                 ' (this will take a lot of time)...')
+                 ' (this may take a lot of time)...')
         check('snap-openstack', 'launch', 'nova-manage', 'api_db', 'sync')
 
         if 'cell0' not in check_output('snap-openstack', 'launch',
@@ -577,7 +578,7 @@ class NovaControlPlane(Question):
                   'create_cell', '--name=cell1', '--verbose')
 
         log.info('Running Nova DB migrations'
-                 ' (this will take a lot of time)...')
+                 ' (this may take a lot of time)...')
         check('snap-openstack', 'launch', 'nova-manage', 'db', 'sync')
 
         restart('nova-api')
@@ -594,7 +595,16 @@ class NovaControlPlane(Question):
 
         sleep(5)  # TODO: log_wait
 
+        if not call('openstack', 'service', 'show', 'compute'):
+            check('openstack', 'service', 'create', '--name', 'nova',
+                  '--description', '"Openstack Compute"', 'compute')
+            for endpoint in ['public', 'internal', 'admin']:
+                call('openstack', 'endpoint', 'create', '--region',
+                     'microstack', 'compute', endpoint,
+                     'http://{control_ip}:8774/v2.1'.format(**_env))
+
         log.info('Creating default flavors...')
+
         self._flavors()
 
     def no(self, answer):
@@ -618,8 +628,12 @@ class CinderSetup(Question):
         log.info('Configuring the Cinder services...')
 
         if not call('openstack', 'user', 'show', 'cinder'):
-            check('openstack', 'user', 'create', '--domain', 'default',
-                  '--password', 'cinder', 'cinder')
+            check(
+                'openstack', 'user', 'create', '--domain', 'default',
+                '--password',
+                shell.config_get('config.credentials.cinder-password'),
+                'cinder'
+            )
             check('openstack', 'role', 'add', '--project', 'service',
                   '--user', 'cinder', 'admin')
 
@@ -699,8 +713,11 @@ class NeutronControlPlane(Question):
         log.info('Configuring Neutron')
 
         if not call('openstack', 'user', 'show', 'neutron'):
-            check('openstack', 'user', 'create', '--domain', 'default',
-                  '--password', 'neutron', 'neutron')
+            check(
+                'openstack', 'user', 'create', '--domain', 'default',
+                '--password',
+                shell.config_get('config.credentials.neutron-password'),
+                'neutron')
             check('openstack', 'role', 'add', '--project', 'service',
                   '--user', 'neutron', 'admin')
 
@@ -810,8 +827,12 @@ class GlanceSetup(Question):
         log.info('Configuring Glance ...')
 
         if not call('openstack', 'user', 'show', 'glance'):
-            check('openstack', 'user', 'create', '--domain', 'default',
-                  '--password', 'glance', 'glance')
+            check(
+                'openstack', 'user', 'create', '--domain', 'default',
+                '--password',
+                shell.config_get('config.credentials.glance-password'),
+                'glance'
+            )
             check('openstack', 'role', 'add', '--project', 'service',
                   '--user', 'glance', 'admin')
 

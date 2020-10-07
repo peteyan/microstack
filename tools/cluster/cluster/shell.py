@@ -1,6 +1,7 @@
 import os
 import pymysql
 import subprocess
+import json
 
 
 def sql(cmd) -> None:
@@ -16,7 +17,9 @@ def sql(cmd) -> None:
 
     """
     mysql_conf = '${SNAP_USER_COMMON}/etc/mysql/my.cnf'.format(**os.environ)
+    root_pasword = config_get('config.credentials.mysql-root-password')
     connection = pymysql.connect(host='localhost', user='root',
+                                 password=root_pasword,
                                  read_default_file=mysql_conf)
 
     with connection.cursor() as cursor:
@@ -36,3 +39,19 @@ def check(*args):
 
     """
     return subprocess.check_call(args, env=os.environ)
+
+
+def config_get(*keys):
+    """Get snap config keys via snapctl.
+
+    :param keys list[str]: Keys to retrieve from the snap configuration.
+    """
+    return json.loads(check_output('snapctl', 'get', '-t', *keys))
+
+
+def config_set(**kwargs):
+    """Get snap config keys via snapctl.
+
+    :param kwargs dict[str, str]: Values to set in the snap configuration.
+    """
+    check_output('snapctl', 'set', *[f'{k}={v}' for k, v in kwargs.items()])

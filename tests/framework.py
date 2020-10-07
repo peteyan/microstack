@@ -252,6 +252,10 @@ class Framework(unittest.TestCase):
         dashboard_port = check_output(*host.prefix, 'sudo', 'snap', 'get',
                                       'microstack',
                                       'config.network.ports.dashboard')
+        keystone_password = check_output(
+            *host.prefix, 'sudo', 'snap', 'get',
+            'microstack',
+            'config.credentials.keystone-password')
         self.driver.get("http://{}:{}/".format(
             host.horizon_ip,
             dashboard_port
@@ -259,7 +263,8 @@ class Framework(unittest.TestCase):
         # Login to horizon!
         self.driver.find_element(By.ID, "id_username").click()
         self.driver.find_element(By.ID, "id_username").send_keys("admin")
-        self.driver.find_element(By.ID, "id_password").send_keys("keystone")
+        self.driver.find_element(By.ID, "id_password").send_keys(
+            keystone_password)
         self.driver.find_element(By.CSS_SELECTOR, "#loginBtn > span").click()
         # Verify that we can click something on the dashboard -- e.g.,
         # we're still not sitting at the login screen.

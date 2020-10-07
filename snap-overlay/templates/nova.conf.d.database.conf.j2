@@ -1,5 +1,5 @@
 [database]
-connection = mysql+pymysql://nova:nova@{{ control_ip }}:{{ mysql_port }}/nova
+connection = mysql+pymysql://nova:{{ nova_password }}@{{ control_ip }}:{{ mysql_port }}/nova
 
 [api_database]
-connection = mysql+pymysql://nova_api:nova_api@{{ control_ip }}:{{ mysql_port }}/nova_api
+connection = mysql+pymysql://nova:{{ nova_password }}@{{ control_ip }}:{{ mysql_port }}/nova_api

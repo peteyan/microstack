@@ -32,6 +32,7 @@ import netifaces
 import pymysql
 import socket
 import wget
+import json
 
 from init.config import Env, log
 
@@ -105,7 +106,9 @@ def sql(cmd: str) -> None:
 
     """
     mysql_conf = '{SNAP_COMMON}/etc/mysql/my.cnf'.format(**_env)
-    connection = pymysql.connect(read_default_file=mysql_conf)
+    root_pasword = config_get('config.credentials.mysql-root-password')
+    connection = pymysql.connect(read_default_file=mysql_conf,
+                                 password=root_pasword)
 
     with connection.cursor() as cursor:
         cursor.execute(cmd)
@@ -167,6 +170,22 @@ def disable(service: str) -> None:
 
     """
     check('snapctl', 'stop', '--disable', 'microstack.{}'.format(service))
+
+
+def config_get(*keys):
+    """Get snap config keys via snapctl.
+
+    :param keys list[str]: Keys to retrieve from the snap configuration.
+    """
+    return json.loads(check_output('snapctl', 'get', '-t', *keys))
+
+
+def config_set(**kwargs):
+    """Get snap config keys via snapctl.
+
+    :param kwargs dict[str, str]: Values to set in the snap configuration.
+    """
+    check_output('snapctl', 'set', *[f'{k}={v}' for k, v in kwargs.items()])
 
 
 def download(url: str, output: str) -> None:

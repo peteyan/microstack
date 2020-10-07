@@ -7,6 +7,7 @@ use_journal = True
 # Set a hostname to be an FQDN to avoid issues with port binding for
 # which a hostname of a Nova node must match a hostname of an OVN chassis.
 host = {{ node_fqdn }}
+my_ip = {{ compute_ip }}
 
 [oslo_concurrency]
 # Oslo Concurrency lock path

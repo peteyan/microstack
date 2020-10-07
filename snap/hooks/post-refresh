@@ -11,7 +11,7 @@ if [ -z "$(snapctl get config)" ]; then
     # config values under a config tree. Set the default values now (the
     # old values were not documented, and we assume that they were not
     # set).
-    set-default-config
+    set-default-config.py
 
     # Make a place for our horizon config overrides to live. We piggy
     # back on the above check, because the changes were made

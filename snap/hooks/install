@@ -3,7 +3,7 @@ set -ex
 
 
 # Initialize config
-set-default-config
+set-default-config.py
 
 # TODO(dmitriis): disable other services and only enable them once the
 # prerequisites are met instead of allowing snapd to start them and make them fail.
@@ -14,6 +14,23 @@ set-default-config
 # 3. Interfaces that do not have auto-connection enabled are manually connected by
 #    an operator (connecting openvswitch-support loads the openvswitch kernel module
 #    but auto-connection is not enabled for openvswitch-support).
+snapctl stop --disable $SNAP_INSTANCE_NAME.nginx
+snapctl stop --disable $SNAP_INSTANCE_NAME.keystone-uwsgi
+snapctl stop --disable $SNAP_INSTANCE_NAME.placement-uwsgi
+snapctl stop --disable $SNAP_INSTANCE_NAME.nova-api
+snapctl stop --disable $SNAP_INSTANCE_NAME.nova-compute
+snapctl stop --disable $SNAP_INSTANCE_NAME.nova-conductor
+snapctl stop --disable $SNAP_INSTANCE_NAME.nova-api-metadata
+snapctl stop --disable $SNAP_INSTANCE_NAME.nova-spicehtml5proxy
+snapctl stop --disable $SNAP_INSTANCE_NAME.nova-scheduler
+
+snapctl stop --disable $SNAP_INSTANCE_NAME.neutron-api
+
+snapctl stop --disable $SNAP_INSTANCE_NAME.glance-api
+snapctl stop --disable $SNAP_INSTANCE_NAME.registry
+
+snapctl stop --disable $SNAP_INSTANCE_NAME.cinder-uwsgi
+
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovsdb-server
 snapctl stop --disable $SNAP_INSTANCE_NAME.neutron-ovn-metadata-agent
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovn-ovsdb-server-sb
@@ -32,6 +49,9 @@ snapctl stop --disable $SNAP_INSTANCE_NAME.setup-lvm-loopdev
 # Will only be enabled if a backend is chosen to be configured by the user.
 snapctl stop --disable $SNAP_INSTANCE_NAME.cinder-volume
 
+snapctl stop --disable $SNAP_INSTANCE_NAME.filebeat
+snapctl stop --disable $SNAP_INSTANCE_NAME.nrpe
+snapctl stop --disable $SNAP_INSTANCE_NAME.telegraf
 
 mkdir -p $SNAP_DATA/lib/libvirt/images
 mkdir -p ${SNAP_COMMON}/log/libvirt/qemu
