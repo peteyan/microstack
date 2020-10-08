@@ -108,6 +108,7 @@ setup:
     alerting_tag: 'config.alerting.tag'
     ovn_nb_connection: 'config.network.ovn-nb-connection'
     ovn_sb_connection: 'config.network.ovn-sb-connection'
+    ovn_metadata_proxy_shared_secret: 'config.credentials.ovn-metadata-proxy-shared-secret'
     setup_loop_based_cinder_lvm_backend: 'config.cinder.setup-loop-based-cinder-lvm-backend'
     lvm_backend_volume_group: 'config.cinder.lvm-backend-volume-group'
 entry_points:

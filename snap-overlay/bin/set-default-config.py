@@ -79,6 +79,7 @@ def _setup_secrets():
             'config.credentials.neutron-password',
             'config.credentials.placement-password',
             'config.credentials.glance-password',
+            'config.credentials.ovn-metadata-proxy-shared-secret',
         ] if k not in existing_cred_keys
     })
 

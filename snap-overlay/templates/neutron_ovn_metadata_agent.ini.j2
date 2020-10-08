@@ -1,5 +1,8 @@
 [DEFAULT]
-metadata_proxy_shared_secret = supersecret
+
+nova_metadata_host = {{ control_ip }}
+
+metadata_proxy_shared_secret = {{ ovn_metadata_proxy_shared_secret }}
 
 [ovs]
 ovsdb_connection = unix:{{ snap_common }}/run/openvswitch/db.sock
