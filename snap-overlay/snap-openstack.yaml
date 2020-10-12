@@ -19,6 +19,8 @@ setup:
     - "{snap_common}/etc/nova/uwsgi/snap"
     - "{snap_common}/etc/horizon/uwsgi/snap"
     - "{snap_common}/etc/placement/uwsgi/snap"
+    - "{snap_common}/etc/cluster/tls"
+    - "{snap_common}/etc/cluster/uwsgi/snap"
     - "{snap_common}/etc/rabbitmq"
     - "{snap_common}/fernet-keys"
     - "{snap_common}/lib"
@@ -31,6 +33,7 @@ setup:
     - "{snap_common}/etc/iscsi"
     - "{snap_common}/etc/target"
   templates:
+    cluster-nginx.conf.j2: "{snap_common}/etc/nginx/snap/sites-enabled/cluster.conf"
     keystone-nginx.conf.j2: "{snap_common}/etc/nginx/snap/sites-enabled/keystone.conf"
     keystone-snap.conf.j2: "{snap_common}/etc/keystone/keystone.conf.d/keystone-snap.conf"
     neutron-snap.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/neutron-snap.conf"
@@ -82,6 +85,9 @@ setup:
     "{snap_common}/etc/microstack.rc": 0644
     "{snap_common}/etc/microstack.json": 0644
   snap-config-keys:
+    is_clustered: 'config.is-clustered'
+    cluster_tls_cert_path: 'config.cluster.tls-cert-path'
+    cluster_tls_key_path: 'config.cluster.tls-key-path'
     region_name: 'config.keystone.region-name'
     keystone_password: 'config.credentials.keystone-password'
     nova_password: 'config.credentials.nova-password'
@@ -132,6 +138,12 @@ entry_points:
       - "{snap_common}/etc/keystone/keystone.conf.d"
     templates:
       keystone-api.ini.j2: "{snap_common}/etc/keystone/uwsgi/snap/keystone-api.ini"
+  cluster-uwsgi:
+    type: uwsgi
+    uwsgi-dir: "{snap_common}/etc/cluster/uwsgi/snap"
+    uwsgi-dir-override: "{snap_common}/etc/cluster/uwsgi"
+    templates:
+      cluster-api.ini.j2: "{snap_common}/etc/cluster/uwsgi/snap/cluster-api.ini"
   nginx:
     type: nginx
     config-file: "{snap_common}/etc/nginx/snap/nginx.conf"

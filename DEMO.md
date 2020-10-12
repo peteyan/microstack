@@ -77,7 +77,7 @@ each other. Plus, you need a root password and other niceties. Run the
 init script to set all of that up:
 
 ```
-microstack.init --auto
+microstack init --auto --control
 ```
 
 (Note that you may leave --auto out at present. The init script will
@@ -114,7 +114,7 @@ sudo systemctl restart snap.microstack.*
 
 Create a test instance in your cloud.
 
-`microstack.launch cirros --name test`
+`microstack launch cirros --name test`
 
 This will launch a machine using the built-in cirros image. Once the
 machine is setup, verify that you can ping it, then tear it down.

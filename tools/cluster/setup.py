@@ -8,6 +8,7 @@ setup(
     entry_points={
         'console_scripts': [
             'microstack_join = cluster.client:join',
+            'microstack_add_compute = cluster.add_compute:main',
         ],
     }
 )

@@ -118,7 +118,7 @@ class Host():
 
     def init(self, args=['--auto']):
         print(f"Initializing the snap with {args}")
-        check(*self.prefix, 'sudo', 'microstack.init', *args)
+        check(*self.prefix, 'sudo', 'microstack', 'init', *args)
 
     def multipass(self):
         self.machine = petname.generate()

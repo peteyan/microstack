@@ -176,8 +176,13 @@ def config_get(*keys):
     """Get snap config keys via snapctl.
 
     :param keys list[str]: Keys to retrieve from the snap configuration.
+    :return: The parsed JSON document representation.
+    :rtype: str or int or float or bool or dict or list
     """
-    return json.loads(check_output('snapctl', 'get', '-t', *keys))
+    if keys:
+        return json.loads(check_output('snapctl', 'get', '-t', *keys))
+    else:
+        return None
 
 
 def config_set(**kwargs):
@@ -185,7 +190,8 @@ def config_set(**kwargs):
 
     :param kwargs dict[str, str]: Values to set in the snap configuration.
     """
-    check_output('snapctl', 'set', *[f'{k}={v}' for k, v in kwargs.items()])
+    if kwargs:
+        check('snapctl', 'set', *[f'{k}={v}' for k, v in kwargs.items()])
 
 
 def download(url: str, output: str) -> None:

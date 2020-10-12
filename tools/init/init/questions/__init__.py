@@ -31,6 +31,7 @@ from init import shell
 from init.shell import (check, call, check_output, sql, nc_wait, log_wait,
                         start, restart, download, disable, enable)
 from init.config import Env, log
+from init import cluster_tls
 from init.questions.question import Question
 from init.questions import clustering, network, uninstall  # noqa F401
 
@@ -46,66 +47,68 @@ class ConfigError(Exception):
 
 
 class Clustering(Question):
-    """Possibly setup clustering."""
+    """Possibly configure clustering."""
 
     _type = 'boolean'
-    _question = 'Do you want to setup clustering?'
-    config_key = 'config.clustered'
+    _question = 'Would you like to configure clustering?'
+    config_key = 'config.is-clustered'
     interactive = True
+    # Overrides to be used when options are explicitly specified via
+    # command-line arguments.
+    connection_string_interactive = True
+    role_interactive = True
 
     def yes(self, answer: bool):
-
         log.info('Configuring clustering ...')
 
+        role_question = clustering.Role()
+        if not (self.interactive and self.role_interactive):
+            role_question.interactive = False
+        role_question.ask()
+
         questions = [
-            clustering.Role(),
-            clustering.Password(),
+            # Skipped for the compute role and is automatically taken
+            # from the connection string.
             clustering.ControlIp(),
-            clustering.ComputeIp(),  # Automagically skipped role='control'
+            # Skipped for the control role since it is identical to the
+            # control node IP.
+            clustering.ComputeIp(),
         ]
         for question in questions:
             if not self.interactive:
                 question.interactive = False
             question.ask()
 
-        role = check_output('snapctl', 'get', 'config.cluster.role')
-        control_ip = check_output('snapctl', 'get',
-                                  'config.network.control-ip')
-        password = check_output('snapctl', 'get', 'config.cluster.password')
+        connection_string_question = clustering.ConnectionString()
+        if not (self.interactive and self.connection_string_interactive):
+            connection_string_question.interactive = False
+        connection_string_question.ask()
 
-        log.debug('Role: {}, IP: {}, Password: {}'.format(
-            role, control_ip, password))
-
-        # TODO: raise an exception if any of the above are None (can
-        # happen if we're automatig and mess up our params.)
+        role = shell.config_get('config.cluster.role')
 
         if role == 'compute':
-            log.info('I am a compute node.')
+            log.info('Setting up as a compute node.')
             # Gets config info and sets local env vals.
             check_output('microstack_join')
-
-            # Set default question answers.
-            check('snapctl', 'set', 'config.services.control-plane=false')
-            check('snapctl', 'set', 'config.services.hypervisor=true')
+            shell.config_set(**{
+                'config.services.control-plane': 'false',
+                'config.services.hypervisor': 'true',
+            })
 
         if role == 'control':
-            log.info('I am a control node.')
-            check('snapctl', 'set', 'config.services.control-plane=true')
-            # We want to run a hypervisor on our control plane nodes
-            # -- this is essentially a hyper converged cloud.
-            check('snapctl', 'set', 'config.services.hypervisor=true')
-
-        # TODO: if this is run after init has already been called,
-        # need to restart services.
+            log.info('Setting up as a control node.')
+            shell.config_set(**{
+                'config.services.control-plane': 'true',
+                'config.services.hypervisor': 'true',
+            })
+            # Generate a self-signed certificate for the clustering service.
+            cluster_tls.generate_selfsigned()
 
         # Write templates
         check('snap-openstack', 'setup')
 
     def no(self, answer: bool):
-        # Turn off cluster server
-        # TODO: it would be more secure to reverse this -- only enable
-        # to service if we are doing clustering.
-        disable('cluster-server')
+        disable('cluster-uwsgi')
 
 
 class ConfigQuestion(Question):
@@ -554,6 +557,10 @@ class NovaControlPlane(Question):
             )
             check('openstack', 'role', 'add', '--project',
                   'service', '--user', 'nova', 'admin')
+            # Assign the reader role to the nova user so that read-only
+            # application credentials can be created.
+            check('openstack', 'role', 'add', '--project',
+                  'service', '--user', 'nova', 'reader')
 
         # Use snapctl to start nova services.  We need to call them
         # out manually, because systemd doesn't know about them yet.
@@ -680,8 +687,8 @@ class CinderVolumeLVMSetup(Question):
 
     _type = 'boolean'
     config_key = 'config.cinder.setup-loop-based-cinder-lvm-backend'
-    _question = ('(experimental) Do you want to setup a loop device-backed LVM'
-                 ' volume backend for Cinder?')
+    _question = ('(experimental) Would you like to setup a loop device-backed'
+                 ' LVM volume backend for Cinder?')
     interactive = True
 
     def yes(self, answer: bool) -> None:
@@ -780,6 +787,7 @@ class NeutronControlPlane(Question):
                 'neutron-ovn-metadata-agent'
         ]:
             enable(service)
+            restart(service)
 
         # Disable the other services.
         for service in [
@@ -904,7 +912,6 @@ class PostSetup(Question):
     config_key = 'config.post-setup'
 
     def yes(self, answer: str) -> None:
-
         log.info('restarting libvirt and virtlogd ...')
         # This fixes an issue w/ logging not getting set.
         # TODO: fix issue.
@@ -912,7 +919,13 @@ class PostSetup(Question):
         restart('virtlogd')
         restart('nova-compute')
 
-        restart('horizon-uwsgi')
+        role = shell.config_get('config.cluster.role')
+        if role == 'control':
+            # TODO: since snap-openstack launch is used, this depends on the
+            # database readiness and hence the clustering service is enabled
+            # and started here. There needs to be a better way to do this.
+            enable('cluster-uwsgi')
+            restart('horizon-uwsgi')
 
         check('snapctl', 'set', 'initialized=true')
         log.info('Complete. Marked microstack as initialized!')
@@ -936,7 +949,7 @@ class SimpleServiceQuestion(Question):
 class ExtraServicesQuestion(Question):
 
     _type = 'boolean'
-    _question = 'Do you want to setup extra services?'
+    _question = 'Would you like to setup extra services?'
     config_key = 'config.services.extra.enabled'
     interactive = True
 
@@ -958,7 +971,7 @@ class ExtraServicesQuestion(Question):
 
 class Filebeat(SimpleServiceQuestion):
     _type = 'boolean'
-    _question = 'Do you want to enable Filebeat?'
+    _question = 'Would you like to enable Filebeat?'
     config_key = 'config.services.extra.filebeat'
     interactive = True
 
@@ -971,7 +984,7 @@ class Filebeat(SimpleServiceQuestion):
 
 class Telegraf(SimpleServiceQuestion):
     _type = 'boolean'
-    _question = 'Do you want to enable Telegraf?'
+    _question = 'Would you like to enable Telegraf?'
     config_key = 'config.services.extra.telegraf'
     interactive = True
 
@@ -984,7 +997,7 @@ class Telegraf(SimpleServiceQuestion):
 
 class Nrpe(SimpleServiceQuestion):
     _type = 'boolean'
-    _question = 'Do you want to enable NRPE?'
+    _question = 'Would you like to enable NRPE?'
     config_key = 'config.services.extra.nrpe'
     interactive = True
 

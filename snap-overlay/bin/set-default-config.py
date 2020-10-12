@@ -10,7 +10,18 @@ from init import credentials
 def _get_default_config():
     snap_common = os.getenv('SNAP_COMMON')
     return {
-        'config.clustered': False,
+        'config.is-clustered': False,
+
+        'config.cluster.tls-cert-path':
+        f'{snap_common}/etc/cluster/tls/cert.pem',
+        'config.cluster.tls-key-path':
+        f'{snap_common}/etc/cluster/tls/key.pem',
+
+        'config.cluster.fingerprint': 'null',
+        'config.cluster.hostname': 'null',
+        'config.cluster.credential-id': 'null',
+        'config.cluster.credential-secret': 'null',
+
         'config.post-setup': True,
         'config.keystone.region-name': 'microstack',
         'config.credentials.key-pair': '/home/{USER}/snap/{SNAP_NAME}'
@@ -70,16 +81,16 @@ def _setup_secrets():
     else:
         existing_cred_keys = []
     shell.config_set(**{
-        k: credentials.generate_password() for k in [
-            'config.credentials.mysql-root-password',
-            'config.credentials.rabbitmq-password',
-            'config.credentials.keystone-password',
-            'config.credentials.nova-password',
-            'config.credentials.cinder-password',
-            'config.credentials.neutron-password',
-            'config.credentials.placement-password',
-            'config.credentials.glance-password',
-            'config.credentials.ovn-metadata-proxy-shared-secret',
+        f'config.credentials.{k}': credentials.generate_password() for k in [
+            'mysql-root-password',
+            'rabbitmq-password',
+            'keystone-password',
+            'nova-password',
+            'cinder-password',
+            'neutron-password',
+            'placement-password',
+            'glance-password',
+            'ovn-metadata-proxy-shared-secret',
         ] if k not in existing_cred_keys
     })
 

@@ -38,16 +38,21 @@ class TestBasics(Framework):
         host.install()
         host.init([
             '--auto',
+            '--control',
             '--setup-loop-based-cinder-lvm-backend',
-            '--loop-device-file-size=32'
+            '--loop-device-file-size=24'
             ])
         prefix = host.prefix
 
         endpoints = check_output(
             *prefix, '/snap/bin/microstack.openstack', 'endpoint', 'list')
 
-        # Endpoints should be listening on 10.20.20.1
-        self.assertTrue("10.20.20.1" in endpoints)
+        control_ip = check_output(
+            *prefix, 'sudo', 'snap', 'get',
+            'microstack', 'config.network.control-ip'
+        )
+        # Endpoints should contain the control IP.
+        self.assertTrue(control_ip in endpoints)
 
         # Endpoints should not contain localhost
         self.assertFalse("localhost" in endpoints)

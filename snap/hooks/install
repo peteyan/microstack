@@ -53,6 +53,8 @@ snapctl stop --disable $SNAP_INSTANCE_NAME.filebeat
 snapctl stop --disable $SNAP_INSTANCE_NAME.nrpe
 snapctl stop --disable $SNAP_INSTANCE_NAME.telegraf
 
+snapctl stop --disable $SNAP_INSTANCE_NAME.cluster-uwsgi
+
 mkdir -p $SNAP_DATA/lib/libvirt/images
 mkdir -p ${SNAP_COMMON}/log/libvirt/qemu
 # NOTE(dmitriis): there is currently no way to make sure this directory gets

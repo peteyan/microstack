@@ -1,6 +1,10 @@
 from init.config import Env, log
 from init.questions.question import Question
-from init.shell import check, check_output
+from init.shell import (
+    check,
+    config_get,
+    config_set,
+)
 
 _env = Env().get_env()
 
@@ -13,18 +17,21 @@ class ExtGateway(Question):
     config_key = 'config.network.ext-gateway'
 
     def yes(self, answer):
-        clustered = check_output('snapctl', 'get', 'config.clustered')
-        if clustered.lower() != 'true':
-            check('snapctl', 'set', 'config.network.control-ip={}'.format(
-                answer))
-            check('snapctl', 'set', 'config.network.compute-ip={}'.format(
-                answer))
-            _env['control_ip'] = _env['compute_ip'] = answer
+        clustered = config_get('config.is-clustered')
+        if not clustered:
+            ip_dict = {
+                'config.network.control-ip': answer,
+                'config.network.compute-ip': answer,
+            }
+            config_set(**ip_dict)
+            _env.update(ip_dict)
         else:
-            _env['control_ip'] = check_output('snapctl', 'get',
-                                              'config.network.control-ip')
-            _env['compute_ip'] = check_output('snapctl', 'get',
-                                              'config.network.compute-ip')
+            ip_dict = config_get(*['config.network.control-ip',
+                                   'config.network.compute-ip'])
+            _env.update({
+                'control_ip': ip_dict['config.network.control-ip'],
+                'compute_ip': ip_dict['config.network.compute-ip'],
+            })
 
 
 class ExtCidr(Question):

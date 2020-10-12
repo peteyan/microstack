@@ -67,6 +67,21 @@ apps:
       - network
       # TODO: - microstack-support
 
+  # A proxy command to avoid calling <namespace>.<command>.
+  # TODO: potentially remove the individual commands completely in favor of this.
+  microstack:
+    command: bin/microstack
+    plugs:
+      - network
+      - mount-observe
+      - network-bind
+      - firewall-control
+      - network-control
+      - ssh-keys
+      - system-observe
+      - hardware-observe
+      # TODO: - microstack-support
+
   # OpenStack Service Configuration
   init:
     command: bin/microstack_init
@@ -80,6 +95,11 @@ apps:
       - system-observe  # rabbitmq ?
       - hardware-observe  # rabbitmq ?
       # TODO: - microstack-support
+
+  add-compute:
+    command: bin/microstack_add_compute
+    plugs:
+      - network
 
   # Keystone
   keystone-uwsgi:
@@ -600,16 +620,13 @@ apps:
       # TODO: - microstack-support
 
   # Cluster
-  cluster-server:
-    command: bin/flask run -p 10002 --host 0.0.0.0 # TODO: run as a uwsgi app
+  cluster-uwsgi:
+    command: bin/snap-openstack launch cluster-uwsgi
     daemon: simple
-    environment:
-      LC_ALL: C.UTF-8  # Makes flask happy
-      LANG: C.UTF-8  # Makes flask happy
-      FLASK_APP: $SNAP/lib/python3.8/site-packages/cluster/daemon.py
     plugs:
       - network
       - network-bind
+      # TODO: - microstack-support
 
   telegraf:
     command: bin/telegraf
@@ -686,11 +703,11 @@ parts:
       - uwsgi
       - git+https://opendev.org/x/snap.openstack#egg=snap.openstack
       - http://tarballs.openstack.org/nova/nova-stable-ussuri.tar.gz
-      - neutron
+      - https://tarballs.opendev.org/openstack/neutron/neutron-stable-ussuri.tar.gz
       - https://tarballs.opendev.org/openstack/glance/glance-stable-ussuri.tar.gz
       - https://tarballs.opendev.org/openstack/cinder/cinder-stable-ussuri.tar.gz
       - https://tarballs.opendev.org/openstack/placement/placement-stable-ussuri.tar.gz
-      - horizon
+      - https://tarballs.opendev.org/openstack/horizon/horizon-stable-ussuri.tar.gz
       - python-cinderclient
       - python-openstackclient
       - python-swiftclient
@@ -1442,6 +1459,25 @@ parts:
       - libc6
     build-environment: *python-build-environment
     after: [init]
+    override-build: |
+      snapcraftctl build
+      `find $SNAPCRAFT_PART_INSTALL -name '__pycache__' | xargs rm -r`
+      `find $SNAPCRAFT_PART_INSTALL -name 'RECORD' | xargs rm`
+      rm $SNAPCRAFT_PART_INSTALL/pyvenv.cfg
+      rm $SNAPCRAFT_PART_INSTALL/bin/activate
+      rm $SNAPCRAFT_PART_INSTALL/bin/activate.csh
+      rm $SNAPCRAFT_PART_INSTALL/bin/activate.fish
+      rm $SNAPCRAFT_PART_INSTALL/bin/python3
+      rm $SNAPCRAFT_PART_INSTALL/bin/python
+
+  microstack:
+    plugin: python
+    source: tools/microstack
+    stage-packages:
+      # note(dmitriis) in order to avoid conflicts about lib64/ld-linux-x86-64.so.2
+      # with other parts.
+      - libc6
+    build-environment: *python-build-environment
     override-build: |
       snapcraftctl build
       `find $SNAPCRAFT_PART_INSTALL -name '__pycache__' | xargs rm -r`
