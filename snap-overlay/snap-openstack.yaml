@@ -70,6 +70,7 @@ setup:
     placement.conf.d.database.conf.j2: "{snap_common}/etc/placement/placement.conf.d/database.conf"
     neutron.keystone.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/keystone.conf"
     neutron.nova.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/nova.conf"
+    neutron.placement.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/placement.conf"
     neutron.database.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/database.conf"
     neutron.conf.d.rabbitmq.conf.j2: "{snap_common}/etc/neutron/neutron.conf.d/rabbitmq.conf"
     neutron_ovn_metadata_agent.ini.j2: "{snap_common}/etc/neutron/neutron_ovn_metadata_agent.ini"
