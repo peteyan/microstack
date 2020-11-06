@@ -5,6 +5,7 @@ import secrets
 import argparse
 
 from datetime import datetime
+from datetime import timezone
 from dateutil.relativedelta import relativedelta
 
 from oslo_serialization import (
@@ -48,7 +49,10 @@ def _create_credential():
     # TODO: make the expiration time customizable since this may be used by
     # automation or during live demonstrations where the lag between issuance
     # and usage may be more than the expiration time.
-    expires_at = datetime.now() + VALIDITY_PERIOD
+    # NOTE(wolsen): LP#1903208 expiration stamps passed to keystone without
+    # timezone information are assumed to be UTC. Explicitly use UTC to get
+    # an expiration at the right time.
+    expires_at = datetime.now(tz=timezone.utc) + VALIDITY_PERIOD
 
     # Role objects themselves are not tied to a specific domain by default
     # - this does not affect role assignments themselves which are scoped.
