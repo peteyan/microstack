@@ -32,6 +32,8 @@ log-error=${LOGDIR}/error.log
 secure-file-priv=${FILESDIR}
 basedir=${BASEDIR}
 
+skip-name-resolve
+
 [mysql]
 socket=${RUNDIR}/mysqld.sock
 port=${PORT}

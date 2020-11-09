@@ -381,11 +381,11 @@ class DatabaseSetup(Question):
             ('placement', 'placement')
         ):
             db_password = db_creds[f'{service_user}-password']
-            sql("CREATE USER IF NOT EXISTS '{user}'@'{control_ip}'"
+            sql("CREATE USER IF NOT EXISTS '{user}'@'%'"
                 " IDENTIFIED BY '{db_password}';".format(
                     user=service_user, db_password=db_password, **_env))
             sql("CREATE DATABASE IF NOT EXISTS `{db}`;".format(db=db_name))
-            sql("GRANT ALL PRIVILEGES ON {db}.* TO '{user}'@'{control_ip}';"
+            sql("GRANT ALL PRIVILEGES ON {db}.* TO '{user}'@'%';"
                 "".format(db=db_name, user=service_user, **_env))
 
     def _bootstrap(self) -> None:
