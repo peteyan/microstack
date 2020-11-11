@@ -29,7 +29,7 @@ from os import path
 
 from init import shell
 from init.shell import (check, call, check_output, sql, nc_wait, log_wait,
-                        start, restart, download, disable, enable)
+                        restart, download, disable, enable)
 from init.config import Env, log
 from init import cluster_tls
 from init.questions.question import Question
@@ -327,7 +327,7 @@ class RabbitMq(Question):
     config_key = 'config.services.control-plane'
 
     def _wait(self) -> None:
-        restart('rabbitmq-server')  # Restart server for plugs
+        enable('rabbitmq-server')
         rabbit_port = check_output(
             'snapctl', 'get', 'config.network.ports.rabbit')
         nc_wait(_env['control_ip'], rabbit_port)
@@ -362,6 +362,7 @@ class DatabaseSetup(Question):
     config_key = 'config.services.control-plane'
 
     def _wait(self) -> None:
+        enable('mysqld')
         mysql_port = check_output(
             'snapctl', 'get', 'config.network.ports.mysql')
         nc_wait(_env['control_ip'], mysql_port)
@@ -416,10 +417,7 @@ class DatabaseSetup(Question):
 
         check('snapctl', 'set', 'database.ready=true')
 
-        # Start keystone-uwsgi. We use snapctl, because systemd
-        # doesn't yet know about the service.
-        start('nginx')
-        start('keystone-uwsgi')
+        enable('nginx')
 
         log.info('Configuring Keystone Fernet Keys ...')
         check('snap-openstack', 'launch', 'keystone-manage',
@@ -427,7 +425,7 @@ class DatabaseSetup(Question):
               '--keystone-group', 'root')
         check('snap-openstack', 'launch', 'keystone-manage', 'db_sync')
 
-        restart('keystone-uwsgi')
+        enable('keystone-uwsgi')
 
         log.info('Bootstrapping Keystone ...')
         self._bootstrap()
@@ -456,10 +454,14 @@ class NovaHypervisor(Question):
 
     def yes(self, answer):
         log.info('Configuring nova compute hypervisor ...')
-        start('nova-compute')
+        enable('libvirtd')
+        enable('virtlogd')
+        enable('nova-compute')
 
     def no(self, answer):
         log.info('Disabling nova compute service ...')
+        disable('libvirtd')
+        disable('virtlogd')
         disable('nova-compute')
 
 
@@ -471,7 +473,7 @@ class NovaSpiceConsoleSetup(Question):
 
     def yes(self, answer):
         log.info('Configuring the Spice HTML5 console service...')
-        start('nova-spicehtml5proxy')
+        enable('nova-spicehtml5proxy')
 
     def no(self, answer):
         log.info('Disabling nova compute service ...')
@@ -507,12 +509,9 @@ class PlacementSetup(Question):
                      'microstack', 'placement', endpoint,
                      'http://{control_ip}:8778'.format(**_env))
 
-        start('placement-uwsgi')
-
         log.info('Running Placement DB migrations...')
         check('snap-openstack', 'launch', 'placement-manage', 'db', 'sync')
-
-        restart('placement-uwsgi')
+        enable('placement-uwsgi')
 
     def no(self, answer):
         log.info('Disabling the Placement service...')
@@ -562,12 +561,6 @@ class NovaControlPlane(Question):
             check('openstack', 'role', 'add', '--project',
                   'service', '--user', 'nova', 'reader')
 
-        # Use snapctl to start nova services.  We need to call them
-        # out manually, because systemd doesn't know about them yet.
-        # TODO: parse the output of `snapctl services` to get this
-        # list automagically.
-        start('nova-api')
-
         log.info('Running Nova API DB migrations'
                  ' (this may take a lot of time)...')
         check('snap-openstack', 'launch', 'nova-manage', 'api_db', 'sync')
@@ -588,7 +581,7 @@ class NovaControlPlane(Question):
                  ' (this may take a lot of time)...')
         check('snap-openstack', 'launch', 'nova-manage', 'db', 'sync')
 
-        restart('nova-api')
+        enable('nova-api')
         restart('nova-compute')
 
         for service in [
@@ -596,7 +589,7 @@ class NovaControlPlane(Question):
                 'nova-conductor',
                 'nova-scheduler',
         ]:
-            start(service)
+            enable(service)
 
         nc_wait(_env['compute_ip'], '8774')
 
@@ -663,13 +656,11 @@ class CinderSetup(Question):
                             f'http://{control_ip}:8776/{api_version}/'
                             '$(project_id)s'
                     )
-        restart('cinder-uwsgi')
-
         log.info('Running Cinder DB migrations...')
         check('snap-openstack', 'launch', 'cinder-manage', 'db', 'sync')
 
-        restart('cinder-uwsgi')
-        restart('cinder-scheduler')
+        enable('cinder-uwsgi')
+        enable('cinder-scheduler')
 
     def no(self, answer):
         log.info('Disabling Cinder services...')
@@ -736,16 +727,10 @@ class NeutronControlPlane(Question):
                      'microstack', 'network', endpoint,
                      'http://{control_ip}:9696'.format(**_env))
 
-        start('neutron-api')
-
         check('snap-openstack', 'launch', 'neutron-db-manage', 'upgrade',
               'head')
-
-        for service in [
-                'neutron-api',
-                'neutron-ovn-metadata-agent',
-        ]:
-            restart(service)
+        enable('neutron-api')
+        enable('neutron-ovn-metadata-agent')
 
         nc_wait(_env['control_ip'], '9696')
 
@@ -852,16 +837,14 @@ class GlanceSetup(Question):
                       'microstack', 'image', endpoint,
                       'http://{compute_ip}:9292'.format(**_env))
 
+        check('snap-openstack', 'launch', 'glance-manage', 'db_sync')
+        # TODO: remove the glance registry
+        # https://blueprints.launchpad.net/glance/+spec/deprecate-registry
         for service in [
                 'glance-api',
-                'registry',  # TODO rename to glance-registery
+                'registry',
         ]:
-            start(service)
-
-        check('snap-openstack', 'launch', 'glance-manage', 'db_sync')
-
-        restart('glance-api')
-        restart('registry')
+            enable(service)
 
         nc_wait(_env['compute_ip'], '9292')
 
@@ -925,7 +908,7 @@ class PostSetup(Question):
             # database readiness and hence the clustering service is enabled
             # and started here. There needs to be a better way to do this.
             enable('cluster-uwsgi')
-            restart('horizon-uwsgi')
+            enable('horizon-uwsgi')
 
         check('snapctl', 'set', 'initialized=true')
         log.info('Complete. Marked microstack as initialized!')

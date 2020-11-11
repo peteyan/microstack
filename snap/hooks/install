@@ -24,12 +24,15 @@ snapctl stop --disable $SNAP_INSTANCE_NAME.nova-api-metadata
 snapctl stop --disable $SNAP_INSTANCE_NAME.nova-spicehtml5proxy
 snapctl stop --disable $SNAP_INSTANCE_NAME.nova-scheduler
 
+snapctl stop --disable $SNAP_INSTANCE_NAME.horizon-uwsgi
+
 snapctl stop --disable $SNAP_INSTANCE_NAME.neutron-api
 
 snapctl stop --disable $SNAP_INSTANCE_NAME.glance-api
 snapctl stop --disable $SNAP_INSTANCE_NAME.registry
 
 snapctl stop --disable $SNAP_INSTANCE_NAME.cinder-uwsgi
+snapctl stop --disable $SNAP_INSTANCE_NAME.cinder-scheduler
 
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovsdb-server
 snapctl stop --disable $SNAP_INSTANCE_NAME.neutron-ovn-metadata-agent
@@ -38,6 +41,9 @@ snapctl stop --disable $SNAP_INSTANCE_NAME.ovn-ovsdb-server-nb
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovs-vswitchd
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovn-northd
 snapctl stop --disable $SNAP_INSTANCE_NAME.ovn-controller
+
+snapctl stop --disable $SNAP_INSTANCE_NAME.rabbitmq-server
+snapctl stop --disable $SNAP_INSTANCE_NAME.mysqld
 
 snapctl stop --disable $SNAP_INSTANCE_NAME.iscsid
 snapctl stop --disable $SNAP_INSTANCE_NAME.target
