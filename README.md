@@ -66,11 +66,10 @@ image, the user account is 'cirros'.
 
 ## Horizon
 
-The launch output will also provide information for the Horizon dashboard. Its
-credentials are:
+The launch output will also provide information for the Horizon dashboard. The
+username is 'admin' and the password can be obtained in this way:
 
-    username: admin
-    password: keystone
+    sudo snap get microstack config.credentials.keystone-password
 
 ## Removing MicroStack
 
